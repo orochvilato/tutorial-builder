@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+    #viewport {
+        //float: left;
+        position: relative;
+        width:960px;
+        height:540px;
+        margin:0 auto;
+        overflow: hidden;
+        border: solid;
+    }
+    .zone {
+        left:40px;
+        top:40px;
+        width:400px;
+        height:300px;
+        border-color: black;
+        border-style: solid;
+        border-width: 2px;
+        position: absolute;
+        
+        -webkit-animation: blink 1s infinite;
+        -moz-animation:    blink 1s infinite;
+        -ms-animation:     blink 1s infinite;
+
+    }
+    .image {
+        margin:0px;
+        position:absolute;
+        width:100%;
+    }
+    .cursor {
+        position:absolute;
+        left:450px;
+        top: 350px;
+        width:20px;
+    }
+    @-webkit-keyframes blink {
+        0%   { border-color:#777; }
+        50%  { border-color:#000;}
+        100% { border-color:#777; }
+    }
+    @-moz-keyframes blink {
+        0%   { border-color:#777; }
+        50%  { border-color:#000;}
+        100% { border-color:#777; }
+    }
+    @-ms-keyframes blink {
+        0%   { border-color:#777; }
+        50%  { border-color:#000;}
+        100% { border-color:#777; }
+    }
+    .click {
+        visibility: hidden;
+        border-radius: 50%;
+        border-color: red;
+        border-style: solid;
+        border-width: 4px;
+        opacity: 0.5;
+        width:0px;
+        height:0px;
+        //background: beige;
+        position: absolute;
+        top:50px;
+        left:50px;
+    }
+</style>
+<link href="css/bootstrap.min.css" rel="stylesheet">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="js/velocity.min.js"></script>
+<script src="js/velocity.ui.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="data.js"></script>
+<script> 
+$(document).ready(function(){
+    
+    //$.getJSON( "test.json", function( data ) {
+    //    sce = data;
+    //});
+    var clickcircle = 50;
+    var step = 0;
+    var zoom;
+    var viewport_w = 960;
+    var viewport_h = 540;
+    var cursor_x = 450;
+    var cursor_y = 350;
+    var im_w = 1920;
+    var im_h = 1080;
+    
+    $("#im1").attr('src',sce[0]['image']);
+    $("button").click(function(){
+        go(0,step);
+        step++;
+       
+    });    
+    $('next').click(function() {
+    });
+   function go(seq,step) {
+       var current;
+       var im_x;
+       var im_y;
+       var viewport_x;
+       var viewport_y;
+       var tx;
+       var ty;
+       var zoomActive=false;
+
+       function showStepImage(step) {
+           console.log('show step '+step);
+           $("#im1").attr('src',sce[step]['image']);
+       }
+       function showImageCallback(step) {
+            console.log('call step '+step);
+            return function() { showStepImage(step);};
+       }
+       function updateVars() {
+           current = sce[step];
+           im_x = current['mousex'];
+           im_y = current['mousey'];
+           if (im_x != 0 || im.y != 0)  {
+               updateCursor(im_x,im_y);            
+           }
+           updateZoom();
+       }
+       function updateCursor(x,y) {
+           im_x = x;
+           im_y = y;
+           viewport_x = (x /im_w) * viewport_w;
+           viewport_y = (y /im_h) * viewport_h;
+       }
+       
+       function updateZoom(z) {
+           if (z == undefined) {
+               zoom = 1.5;
+           } else {
+               zoom = z;
+           }
+
+           tx = viewport_w*(zoom-1)/2-viewport_x*(zoom-1); 
+           ty = viewport_h*(zoom-1)/2-viewport_y*(zoom-1);
+       }
+       function zoomImage(z,speed,queue) {
+           if (speed == undefined) {
+            speed=1500;
+           }
+           if (queue == undefined) {
+            queue = false;
+           }
+           updateZoom(z);
+           mySequence.push({ e: $('#im1'), p: {scale:zoom, left: tx+"px",top:ty+"px"}, options: { duration: speed,  sequenceQueue: queue, easing:'easeInSine' } });
+        }
+       function changeImage(step,speed) {
+           if (speed == undefined) {
+            speed=50;
+           }
+       
+           mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showImageCallback(step) } });
+       
+       }
+       function moveCursor(nx,ny,speed,complete) {
+           if (speed == undefined) {
+            speed=1500;
+           }
+           
+           if (nx != 0 || ny != 0) {
+               console.log('udateCursor '+nx+','+ny);
+               updateCursor(nx,ny);
+               mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: complete } });
+               mySequence.push({e: $('.click'), p:{left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { duration:0, sequenceQueue: false }});
+
+           }
+       }
+       function startClick(btn,double,full,speed) {
+           if (speed == undefined) {
+            speed=400;
+           }
+           console.log(double);
+           if (double) {
+               var repeat = 2;
+           } else {
+               var repeat = 1;
+           }
+           if (full == undefined) {
+            full=true;
+           }
+           if (btn == 1) {
+            var color = 'green';
+           } else if (btn == 2) {
+            var color = 'yellow';
+           } else if (btn == 3) {
+            var color = 'red';
+           }
+           console.log(color);
+           for (r=0;r<repeat;r++) {
+               mySequence.push({e: $('.click'), p:{ left:(viewport_x-clickcircle/2)+'px',top:(viewport_y-clickcircle/2)+'px',width:(clickcircle)+'px',height:(clickcircle)+'px'}, options: { duration:0, complete: function () { $('.click').css('border-color',color).css('visibility','visible');} }});
+               mySequence.push({ e: $('.click'), p: {left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { duration: speed/repeat}});
+           }
+           if (full) {
+               mySequence.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed/repeat, complete: function () { $('.click').css('visibility','hidden');}}});
+           }
+
+       }
+       
+       function endClick(speed) {
+           if (speed == undefined) {
+              speed=400;
+           }
+           mySequence.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed, complete: function () { $('.click').css('visibility','hidden');}}});
+       }
+       
+       //updateVars();
+       var mySequence = [];
+       var lastZoom = 1.5;
+       console.log(sce[0]['sequence'])
+       moveCursor(300,200,500);
+       for (i=step;(i<sce.length && sce[i]['sequence']==seq );i++) {
+           current = sce[i];
+        
+           if (current['type']==='press') {
+               moveCursor(current['mousex'],current['mousey'],1500,showImageCallback(i));
+               zoomImage(current['zoom'],1500);
+               //if (sce[step+1]['type']!='move') {
+               fullclick = true;
+               //} else {
+               // fullclick = false;
+               //}
+               startClick(current['mousebtn'],current['btndouble'],fullclick,150);
+            endClick(50);
+           } else {
+             if (lastZoom != current['zoom']) {
+                 moveCursor(current['mousex'],current['mousey'],1500,showImageCallback(i));
+
+                 zoomImage(current['zoom'],1500);
+             } else {
+                 moveCursor(current['mousex'],current['mousey'],500,showImageCallback(i));
+            }
+            }
+       
+       //
+       //if (step<sce.length) {
+       //   while ((sce[step+1]['type']!='press') && sce[step+1]['type']!='end') {
+       //     step = step +1;
+       //     if (sce[step]['type'] === 'move') {
+       //     } else {
+       //         changeImage(step,50);
+       //         if (sce[step-1]['type'] === 'move') {
+       //          endClick(50);
+       //         }
+
+       //     }
+       //
+       //     zoomImage(1.5,500);
+       //     console.log(step+","+sce[step]['type']);
+       //   }
+       //}
+       lastZoom = current['zoom']
+       }
+       console.log(mySequence);
+       $.Velocity.RunSequence(mySequence);
+     
+   }
+   $(function () {
+  $('[data-toggle="popover"]').popover()
+})
+});
+</script> 
+</head>
+<body>
+<div class="container-fluid">
+<div class="row">
+<button>Start Animation</button>
+
+<p>By default, all HTML elements have a static position, and cannot be moved. To manipulate the position, remember to first set the CSS position property of the element to relative, fixed, or absolute!</p>
+<div id="viewport" style="display:relative;">
+
+<img id="im1" class="image" src=""/>
+<div class="click"></div>
+<div class="zonenone"  data-toggle="popover" title="Popover title" data-content="And here's some amazing content. It's very engaging. Right?"></div>
+<img class="cursor" src="cursor.png"/>
+
+</div>
+</div>
+<!-- Button trigger modal -->
+<button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#myModal">
+  Launch demo modal
+</button>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel">Modal title</h4>
+      </div>
+      <div class="modal-body">
+        ...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+<button type="button" class="btn btn-lg btn-danger" data-toggle="popover" title="Popover title" data-content="And here's some amazing content. It's very engaging. Right?">Click to toggle popover</button>
+</body>
+</html>
+
