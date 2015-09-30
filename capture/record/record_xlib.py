@@ -13,14 +13,24 @@ from PIL import ImageFont
 
 #from record import Event  
 
-class Event():
-    def __init__(self,type=None,x=0,y=0,button=None):
+class Event:
+    def __init__(self,type=None,x=None,y=None,activeWindow=None):
         self.type = type
         self.x = x
         self.y = y
-        self.button = button
-        self.double = False
         self.time = time.time()
+        self.activeWindow = activeWindow
+
+class MouseEvent(Event):
+    def __init__(self,type=None,x=None,y=None,button=None,count=None,activeWindow=None):
+        Event.__init__(self,type,x,y,activeWindow)
+        self.button = button
+        self.count = count
+
+class KeyEvent(Event):
+    def __init__(self,type=None,x=None,y=None,keycode=None,activeWindow=None):
+        Event.__init__(self,type,x,y,activeWindow)
+        self.keycode = keycode
 
 # Change path so we find Xlib
 #sys.path.insert(1, os.path.join(sys.path[0], '..'))
@@ -142,9 +152,12 @@ class recordEventsXlib(recordEvents):
 import time
 t = []
 def press(event):
-    t.append(event)
+    print event.type,event.count
+    t.append((event.type,event.count))
+
+from threading import Timer
     
-class xlibKMEvents():
+class XlibKMEvents():
     def __init__(self):
         self.local_dpy = display.Display()
         self.record_dpy = display.Display()
@@ -157,15 +170,33 @@ class xlibKMEvents():
         self.lastEvent = None
         self.lastTime = time.time()
         self.holdButton = None
+        self.timer = None
+        self.x = None
+        self.y = None
 
 
+    def getMouseXY(self):
+        return (self.x,self.y)
         
-    def bindMouse(self,eventType,callback):
+    def setMouseXY(self,x,y):
+        self.x = x
+        self.y = y
+    
+    def bindMouse(self,type,callback):
         #eventTypes = 'mouseLeftPress', 'mouseLeftRelease','mouseLeftSlide',
         #             'mouseRightPress','mouseRightRelease','mouseRightSlide',
         #             'mouseMiddlePress','mouseMiddleRelease','mouseMiddleSlide',
         #             'mouseWheelUp','mouseWheelDown','mouseMove'
-        self.bindings['mouse'][eventType] = self.bindings['mouse'].get(eventType,[]) + [callback]
+        self.bindings['mouse'][type] = self.bindings.get(type,[]) + [callback]
+
+    def bindKey(self,type,keycode,callback):
+        self.bindings['key'][(type,keycode)] = self.bindings.get((type,keycode),[]) + [callback]
+
+    def executeMouseCallbacks(self,event):
+        if event.type in self.bindings['mouse']:
+             # in a thread ?
+             for callback in self.bindings['mouse'][event.type]:
+                callback(event)
 
     def _createcontext(self):
         # Create a recording context; we only want key and mouse events
@@ -259,36 +290,46 @@ class xlibKMEvents():
             elif event.type == X.ButtonPress:
                 if event.detail<4:
                     eventType = 'mouse'+['Left','Middle','Right','WheelUp','WheelDown'][event.detail-1]+'Press'
-                    print('ButtonPress %s' % eventType)
+                    
+                    logging.debug('ButtonPress %s' % eventType)
                     if self.lastButton == event.detail and (now-self.lastTime)<0.3:
-                        self.lastEvent['count'] += 1
+                        self.lastEvent.count += 1
+                        e = self.lastEvent
                     else:
-                        e = dict(type='click',count=1)
+                        e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,button=event.detail,count=1)
                         self.lastEvent = e
-                        press(e)
+
+                    self.executeMouseCallbacks(e)
                     self.lastTime = now
                     self.lastButton = event.detail
                     self.holdButton = event.detail
+                    
                 
                 
             elif event.type == X.ButtonRelease:
                 eventType = 'mouse'+['Left','Middle','Right','WheelUp','WheelDown'][event.detail-1]
                 if event.detail<4:
                     eventType = eventType + 'Release'
-                
+                e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,button=event.detail,count=1)
+                self.executeMouseCallbacks(e)
 
-                print("ButtonRelease %s" % eventType)
+                logging.debug("ButtonRelease %s" % eventType)
                 self.holdButton = None
 
             elif event.type == X.MotionNotify:
+                self.setMouseXY(event.root_x,event.root_y)
                 eventType = 'mouseSlide' if self.holdButton else 'mouseMove'
+                e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y)
+                self.executeMouseCallbacks(e)
+               
                 
-                print("%s %i %i" % (eventType,event.root_x, event.root_y))
+                logging.debug("%s %i %i" % (eventType,event.root_x, event.root_y))
   
 
   
-x = xlibKMEvents()
+x = XlibKMEvents()
+x.bindMouse('mouseLeftPress',press)
 x.startRecord()
-time.sleep(5)
+time.sleep(10)
 x.endRecord()
 print t
