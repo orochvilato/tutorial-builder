@@ -158,6 +158,7 @@ class xlibKMEvents():
         self.lastTime = time.time()
         self.holdButton = None
 
+
         
     def bindMouse(self,eventType,callback):
         #eventTypes = 'mouseLeftPress', 'mouseLeftRelease','mouseLeftSlide',
@@ -188,9 +189,13 @@ class xlibKMEvents():
     
     def startRecord(self):
         self._createcontext()
-        self.record_dpy.record_enable_context(self.ctx, self._record_callback)
-        print "fin"
+        import thread
+        #self.record_dpy.record_enable_context(self.ctx, self._record_callback)
+        thread.start_new_thread(self.record_dpy.record_enable_context,(self.ctx, self._record_callback))
+        
     def endRecord(self):
+        self.local_dpy.record_disable_context(self.ctx)
+        self.local_dpy.flush()
         self.record_dpy.record_free_context(self.ctx)
     
     def getActiveWindowGeometry(self):
@@ -284,4 +289,6 @@ class xlibKMEvents():
   
 x = xlibKMEvents()
 x.startRecord()
+time.sleep(5)
+x.endRecord()
 print t
