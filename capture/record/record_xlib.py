@@ -156,9 +156,16 @@ class xlibKMEvents():
         self.lastButton = None
         self.lastEvent = None
         self.lastTime = time.time()
+        self.holdButton = None
 
         
-    #def bindMouse(self,eventType,button,     
+    def bindMouse(self,eventType,callback):
+        #eventTypes = 'mouseLeftPress', 'mouseLeftRelease','mouseLeftSlide',
+        #             'mouseRightPress','mouseRightRelease','mouseRightSlide',
+        #             'mouseMiddlePress','mouseMiddleRelease','mouseMiddleSlide',
+        #             'mouseWheelUp','mouseWheelDown','mouseMove'
+        self.bindings['mouse'][eventType] = self.bindings['mouse'].get(eventType,[]) + [callback]
+
     def _createcontext(self):
         # Create a recording context; we only want key and mouse events
         self.ctx = self.record_dpy.record_create_context(
@@ -231,22 +238,33 @@ class xlibKMEvents():
 
             
             elif event.type == X.ButtonPress:
-                print('ButtonPress %s' % event.detail)
-                if self.lastButton == event.detail and (now-self.lastTime)<0.3:
-                    self.lastEvent['count'] += 1
-                else:
-                    e = dict(type='click',count=1)
-                    self.lastEvent = e
-                    press(e)
-                self.lastTime = now
-                self.lastButton = event.detail
+                if event.detail<4:
+                    eventType = 'mouse'+['Left','Middle','Right','WheelUp','WheelDown'][event.detail-1]+'Press'
+                    print('ButtonPress %s' % eventType)
+                    if self.lastButton == event.detail and (now-self.lastTime)<0.3:
+                        self.lastEvent['count'] += 1
+                    else:
+                        e = dict(type='click',count=1)
+                        self.lastEvent = e
+                        press(e)
+                    self.lastTime = now
+                    self.lastButton = event.detail
+                    self.holdButton = event.detail
                 
                 
             elif event.type == X.ButtonRelease:
-                print("ButtonRelease %s" % event.detail)
+                eventType = 'mouse'+['Left','Middle','Right','WheelUp','WheelDown'][event.detail-1]
+                if event.detail<4:
+                    eventType = eventType + 'Release'
+                
+
+                print("ButtonRelease %s" % eventType)
+                self.holdButton = None
 
             elif event.type == X.MotionNotify:
-                print("MotionNotify %i %i" % (event.root_x, event.root_y))
+                eventType = 'mouseSlide' if self.holdButton else 'mouseMove'
+                
+                print("%s %i %i" % (eventType,event.root_x, event.root_y))
   
 
   
