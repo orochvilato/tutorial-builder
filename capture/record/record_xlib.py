@@ -192,7 +192,21 @@ class xlibKMEvents():
         print "fin"
     def endRecord(self):
         self.record_dpy.record_free_context(self.ctx)
-       
+    
+    def getActiveWindowGeometry(self):
+        import Xlib.display
+        display = Xlib.display.Display()
+        window = display.get_input_focus().focus
+        root = window.query_tree().root.id
+        wmname = "noname"
+        while window.query_tree().parent.id != root:
+           if not wmname:
+               wmname = window.get_wm_name()
+           window = window.query_tree().parent
+
+        geo = window.get_geometry()
+        return dict(name=wmname.decode('utf8','ignore'),x=geo.x,y=geo.y,w=geo.width,h=geo.height)
+    
     def _record_callback(self,reply):
             
         def lookup_keysym(keysym):
