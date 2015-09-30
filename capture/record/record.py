@@ -7,19 +7,18 @@ import math, operator
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
-  
+
 image_id = 1
 lastim = None
 
-
+from events import MouseEvent,KeyEvent
 import pyscreenshot as ImageGrab
 import datetime
-import time
 # Enable regular snapshots
 import time
 from threading import Timer
 
-from record_xlib import Event  
+
         
 class Snapshot():
     def __init__(self,title="test",focus=True):
@@ -199,11 +198,36 @@ class Snapshot():
         diff = 100-float(100*diff.count(0))/len(diff)
         
         return diff                
-            
 
-S = Snapshot()
-from record_xlib import recordEventsXlib
-r = recordEventsXlib(S)
-r.startRecord()
+
+class KMEvents:
+    def __init__(self):
+        import platform
+        if platform.system() in ['Linux']:
+            from record_xlib import XlibKMEvents
+            self.platformKMEvt = XlibKMEvents()
+    def startRecord(self):
+        self.platformKMEvt.startRecord()
+    def endRecord(self):
+        self.platformKMEvt.endRecord()
+    def bindMouse(self,type,callback):
+        self.platformKMEvt.bindMouse(type,callback)
+    def bindKey(self,type,keycode,callback):
+        self.platformKMEvt.bindKey(type,keycode,callback)        
+
+def press(event):
+    print event.type,event.button,event.count,event.activeWindow,event.x,event.y
+    
+x = KMEvents()
+x.bindMouse('mouseLeftPress',press)
+x.startRecord()
+time.sleep(10)
+x.endRecord()
+       
+
+#S = Snapshot()
+#from record_xlib import recordEventsXlib
+#r = recordEventsXlib(S)
+#r.startRecord()
 
 
