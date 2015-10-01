@@ -8,9 +8,6 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 
-image_id = 1
-lastim = None
-
 from events import MouseEvent,KeyEvent,Event
 import pyscreenshot as ImageGrab
 import datetime
@@ -53,7 +50,7 @@ class Snapshot():
         
     def takeTimedSnap(self):
         x,y = self.km.getMouseXY()
-        S.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
+        self.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
         if self.snapOn:
             Timer(self.parameters['autodelay'],self.takeTimedSnap,()).start()
     
@@ -78,8 +75,7 @@ class Snapshot():
         now = time.time()
         
         if force or (self.snapOn and now-self.lastCall>0.25):
-            #aw = self.km.getActiveWindowGeometry()
-            print "snap",event.type
+            # active window deja dans Event
             img = ImageGrab.grab()
             self.timeline.append(dict(timestamp=time.time(),event=event,image=img,active=event.activeWindow))
             if event.type != 'timed':
@@ -157,6 +153,8 @@ class Snapshot():
         with open("data.js",'w') as f:
             f.write(js)
         
+        self.init(self.title)
+        
     def diffImage(self,image1,image2):
         diff = ImageChops.difference(image1,image2).histogram()
         diff = 100-float(100*diff.count(0))/len(diff)
@@ -185,8 +183,3 @@ class KMEvents:
 
      
 
-S = Snapshot()
-S.start()
-time.sleep(4)
-S.stop()
-S.saveTimeline()

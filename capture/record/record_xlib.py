@@ -47,9 +47,9 @@ class XlibKMEvents(KMEventsBase):
     
     def startRecord(self):
         self._createcontext()
-        import thread
-        #self.record_dpy.record_enable_context(self.ctx, self._record_callback)
-        thread.start_new_thread(self.record_dpy.record_enable_context,(self.ctx, self._record_callback))
+        #import thread
+        Timer(0,self.record_dpy.record_enable_context,(self.ctx, self._record_callback)).start()
+        #thread.start_new_thread(self.record_dpy.record_enable_context,(self.ctx, self._record_callback))
         
     def endRecord(self):
         self.local_dpy.record_disable_context(self.ctx)
