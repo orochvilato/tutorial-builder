@@ -11,7 +11,7 @@ from PIL import ImageFont
 image_id = 1
 lastim = None
 
-from events import MouseEvent,KeyEvent
+from events import MouseEvent,KeyEvent,Event
 import pyscreenshot as ImageGrab
 import datetime
 # Enable regular snapshots
@@ -22,16 +22,18 @@ from threading import Timer
         
 class Snapshot():
     def __init__(self,title="test",focus=True):
-        self.buttonHold = False
         self.snapOn = False
         self.focus = focus
         self.lastEvent = None
         self.lock = False
-        self.mousex = 0
-        self.mousey = 0
-        self.autodelay = 0.5
+        self.parameters = dict(autodelay=0.5)
         self.init(title)
-    
+        self.km = KMEvents()
+        self.km.bindMouse(['mouseLeftPress', 'mouseLeftRelease','mouseLeftSlide',
+                           'mouseRightPress','mouseRightRelease','mouseRightSlide',
+                           'mouseMiddlePress','mouseMiddleRelease','mouseMiddleSlide',
+                           'mouseWheelUp','mouseWheelDown'],self.takeSnap)
+        
     def init(self,title):
         self.i = 0
         self.seq = 0
@@ -43,44 +45,28 @@ class Snapshot():
         
     def start(self):
         self.snapOn = True
-        Timer(self.autodelay,self.takeTimedSnap,()).start()
+        self.km.startRecord()
+        Timer(self.parameters['autodelay'],self.takeTimedSnap,()).start()
         self.seq += 1
         if not self.starttime:
             self.starttime = time.time()
-    def setMousePosition(self,x,y):
-        self.mousex = x;
-        self.mousey = y;
         
     def takeTimedSnap(self):
-        S.takeSnap(Event(type="timed"),force=True)
+        x,y = self.km.getMouseXY()
+        S.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
         if self.snapOn:
-            Timer(self.autodelay,self.takeTimedSnap,()).start()
+            Timer(self.parameters['autodelay'],self.takeTimedSnap,()).start()
     
     def stop(self):
         self.snapOn = False
-        self.takeSnap(event=Event(type='end'),force=True)
-
+        self.km.endRecord()
         
     def toggle(self):
         if self.snapOn:
             self.stop()
         else:
             self.start()
-            
-    def getActiveWindow(self):
-        import Xlib.display
-        display = Xlib.display.Display()
-        window = display.get_input_focus().focus
-        root = window.query_tree().root.id
-        wmname = "ok"
-        while window.query_tree().parent.id != root:
-           if not wmname:
-               #wmname = window.get_wm_name()
-               wmname="ok"
-           window = window.query_tree().parent
-
-        geo = window.get_geometry()
-        return dict(name=wmname.decode('utf8','ignore'),x=geo.x,y=geo.y,w=geo.width,h=geo.height)
+    
 
     def takeSnap(self,event=None,force=False):
         if self.lock:
@@ -88,27 +74,17 @@ class Snapshot():
         while self.lock:
             pass
         self.lock = True
-        if not event.button:
-            event.x = self.mousex
-            event.y = self.mousey
-            event.button = self.buttonHold
                 
         now = time.time()
-        if event.type=='press' and event.button and self.lastEvent and self.lastEvent.button:
-            self.autodelay = 0.25
-            if event.time-self.lastEvent.time<0.25:
-                self.lastEvent.double = True
-        if event.type=='release':
-            self.autodelay = 0.5
-            
-        if force or (self.snapOn and S.buttonHold and now-self.lastCall>0.25):
-            aw = self.getActiveWindow()
+        
+        if force or (self.snapOn and now-self.lastCall>0.25):
+            #aw = self.km.getActiveWindowGeometry()
+            print "snap",event.type
             img = ImageGrab.grab()
-            self.timeline.append(dict(timestamp=time.time(),event=event,image=img,active=aw))
+            self.timeline.append(dict(timestamp=time.time(),event=event,image=img,active=event.activeWindow))
             if event.type != 'timed':
                 self.lastCall = now
-        if event.button and event.type=='press':
-            self.lastEvent = event
+       
         self.lock = False
         
     
@@ -130,21 +106,9 @@ class Snapshot():
         
     def saveTimeline(self):
         last = None
-        self.seq = 0
-        drag = False
         for i,elt in enumerate(self.timeline):
             current = elt['image']
-            
-            if elt['event'].type=='released' and drag==True:
-                elt['event'].type = 'dragEnd'
-                drag = False
-
-            if elt['event'].type=='timed' and elt['event'].button and elt['timestamp']-last['timestamp']>0.5:
-                if last['event'].type=='press':
-                    last['event'].type='dragStart'
-                    drag = True
-                if drag:
-                    elt['event'].type = 'drag'
+            print i,elt['event'].type
             if self.focus:
                 active=elt['active']
                 
@@ -155,7 +119,7 @@ class Snapshot():
             else:
                 diff = 100
             
-            if not last or (diff>0.5) or (last['active'] != active) or (elt['event'].type == 'press') :
+            if not last or (diff>0.5) or (last['active'] != active) or ('Press' in elt['event'].type) :
                     self.saveElement(elt)
                     elt['saved'] = True
             else:
@@ -184,8 +148,8 @@ class Snapshot():
                                   time=tlelt['timestamp']-self.starttime,
                                   mousex=tlelt['event'].x,
                                   mousey=tlelt['event'].y,
-                                  mousebtn=tlelt['event'].button,
-                                  btndouble=tlelt['event'].double,
+                                  mousebtn=tlelt['event'].button if hasattr(tlelt['event'],'button') else 0,
+                                  btnccount=tlelt['event'].count if hasattr(tlelt['event'],'count') else 0,
                                   activewindow=tlelt['active']))
 
         import json
@@ -206,6 +170,10 @@ class KMEvents:
         if platform.system() in ['Linux']:
             from record_xlib import XlibKMEvents
             self.platformKMEvt = XlibKMEvents()
+    def getMouseXY(self):
+        return self.platformKMEvt.getMouseXY()
+    def getActiveWindowGeometry(self):
+        return self.platformKMEvt.getActiveWindowGeometry()
     def startRecord(self):
         self.platformKMEvt.startRecord()
     def endRecord(self):
@@ -215,19 +183,10 @@ class KMEvents:
     def bindKey(self,type,keycode,callback):
         self.platformKMEvt.bindKey(type,keycode,callback)        
 
-def press(event):
-    print event.type,event.button,event.count,event.activeWindow,event.x,event.y
-    
-x = KMEvents()
-x.bindMouse('mouseLeftPress',press)
-x.startRecord()
-time.sleep(10)
-x.endRecord()
-       
+     
 
-#S = Snapshot()
-#from record_xlib import recordEventsXlib
-#r = recordEventsXlib(S)
-#r.startRecord()
-
-
+S = Snapshot()
+S.start()
+time.sleep(4)
+S.stop()
+S.saveTimeline()

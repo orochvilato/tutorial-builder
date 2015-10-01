@@ -68,6 +68,8 @@ class XlibKMEvents(KMEventsBase):
            window = window.query_tree().parent
 
         geo = window.get_geometry()
+        if not wmname:
+            wmname ="unamed"
         return dict(name=wmname.decode('utf8','ignore'),x=geo.x,y=geo.y,w=geo.width,h=geo.height)
     
     def _record_callback(self,reply):
@@ -123,7 +125,7 @@ class XlibKMEvents(KMEventsBase):
                         self.lastEvent.count += 1
                         e = self.lastEvent
                     else:
-                        e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,button=event.detail,count=1)
+                        e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,button=event.detail,count=1,activeWindow=self.getActiveWindowGeometry())
                         self.lastEvent = e
 
                     self.executeMouseCallbacks(e)
@@ -137,7 +139,7 @@ class XlibKMEvents(KMEventsBase):
                 eventType = 'mouse'+['Left','Middle','Right','WheelUp','WheelDown'][event.detail-1]
                 if event.detail<4:
                     eventType = eventType + 'Release'
-                e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,button=event.detail,count=1)
+                e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,button=event.detail,count=1,activeWindow=self.getActiveWindowGeometry())
                 self.executeMouseCallbacks(e)
 
                 logging.debug("ButtonRelease %s" % eventType)
@@ -146,7 +148,7 @@ class XlibKMEvents(KMEventsBase):
             elif event.type == X.MotionNotify:
                 self.setMouseXY(event.root_x,event.root_y)
                 eventType = 'mouseSlide' if self.holdButton else 'mouseMove'
-                e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y)
+                e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,activeWindow=self.getActiveWindowGeometry())
                 self.executeMouseCallbacks(e)
                
                 
