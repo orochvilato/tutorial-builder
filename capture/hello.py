@@ -24,7 +24,11 @@ def action(name):
 @app.route('/test')
 def test():
     return json.dumps(['a','b'])
-        
+    
+@app.route('/checkstatus')
+def checkstatus():
+    return json.dumps(S.status())
+    
 def openbrowser():
     webbrowser.open('http://localhost:5000/hello',new=1)
 

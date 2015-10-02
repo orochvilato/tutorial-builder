@@ -14,8 +14,10 @@ import datetime
 # Enable regular snapshots
 import time
 from threading import Timer
+import json
 
-
+def test(event):
+    print event.type,event.x,event.y
         
 class Snapshot():
     def __init__(self,title="test",focus=True):
@@ -30,6 +32,7 @@ class Snapshot():
                            'mouseRightPress','mouseRightRelease','mouseRightSlide',
                            'mouseMiddlePress','mouseMiddleRelease','mouseMiddleSlide',
                            'mouseWheelUp','mouseWheelDown'],self.takeSnap)
+        self.km.bindKey(['PressF8'],self.toggle)
         
     def init(self,title):
         self.i = 0
@@ -39,7 +42,8 @@ class Snapshot():
         self.scenario = []
         self.lastCall = time.time()
         self.title = title
-        
+    def status(self):
+        return {'n':len(self.timeline),'on':self.snapOn}
     def start(self):
         self.snapOn = True
         self.km.startRecord()
@@ -178,8 +182,8 @@ class KMEvents:
         self.platformKMEvt.endRecord()
     def bindMouse(self,type,callback):
         self.platformKMEvt.bindMouse(type,callback)
-    def bindKey(self,type,keycode,callback):
-        self.platformKMEvt.bindKey(type,keycode,callback)        
+    def bindKey(self,type,callback):
+        self.platformKMEvt.bindKey(type,callback)        
 
      
 

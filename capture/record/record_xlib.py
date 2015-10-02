@@ -101,19 +101,13 @@ class XlibKMEvents(KMEventsBase):
                 keysym = self.local_dpy.keycode_to_keysym(event.detail, 0)
                 if not keysym:
                     logging.debug("KeyCode%s %s" % (pr, event.detail))
+                    code = "%s%s" % (pr,event.detail)
                 else:
                     logging.debug("KeyStr%s %s" % (pr, lookup_keysym(keysym)))
+                    code = "%s%s" % (pr,lookup_keysym(keysym))
+                e = KeyEvent(type=code,x=event.root_x,y=event.root_y,activeWindow=self.getActiveWindowGeometry())
+                self.executeKeyCallbacks(e)
             
-            if event.type == X.KeyPress and keysym == XK.XK_Escape:
-                self.local_dpy.record_disable_context(self.ctx)
-                self.local_dpy.flush()
-                return
-            if event.type == X.KeyPress and keysym and lookup_keysym(keysym) == 'F8':
-                pass
-            if event.type == X.KeyPress and keysym and lookup_keysym(keysym) == 'F6':
-                pass
-            if event.type == X.KeyPress and keysym and lookup_keysym(keysym) == 'Shift_R':
-                pass
 
             
             elif event.type == X.ButtonPress:

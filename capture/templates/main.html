@@ -8,24 +8,41 @@
 <body ng-controller="MainCtrl as ctrl">
 <div class="container">
 <div class="row">
+<div class="col-md-12">
 {% if name %}
   <h1>Hello {{ name }}!</h1>
 {% else %}
-  <h1>Hello World!</h1>
+  <h1><span class="label {[ ctrl.statusclass ]}" ng-bind="ctrl.status.n"></span></h1>
 {% endif %}
 
 <button type="button" class="btn btn-default" ng-click="ctrl.action('start')"><i class="fa fa-play"></i> Start</button>
 <button type="button" class="btn btn-default" ng-click="ctrl.action('stop')"><i class="fa fa-stop"></i> Stop</button>
 <button type="button" class="btn btn-default" ng-click="ctrl.action('save')">Save</button>
+</div> <!-- col-md-12 -->
+<div class="col-md-12">
+<p><p>
+</div> <!-- col-md-12 -->
 </div> <!-- row -->
 </div> <!-- container -->
 <script
   src="static/js/angular.min.js">
 </script>
 <script type="text/javascript">
-  angular.module("captureApp",[])
+  var app = angular.module("captureApp",[])
     .controller('MainCtrl', ['$http',function($http) {
       var self = this;
+      checkStatus();
+      function checkStatus() {
+        $http.get('/checkstatus').then(function(response) {
+            self.status = response.data;
+            if (self.status.on) {
+              self.statusclass = 'label-success';
+            } else {
+              self.statusclass = 'label-danger';
+            }
+            console.log(self.status)
+        });
+      }
       
       self.test = function() {
         $http.get('/test').then(function(response) {
@@ -36,14 +53,27 @@
       };
       
       self.action = function(action) {
+        if (action === 'start') {
+            self.icheck = setInterval(function(){ checkStatus() }, 1000);
+        }
+        if (action === 'stop') {
+            clearInterval(self.icheck);
+        }
         $http.get('/action/'+action).then(function(response) {
             console.log(response);
+            checkStatus();
         }, function(errResponse) {
             console.error('error /action');
         });
       };
 
     }]);
+  app.config(['$interpolateProvider', function($interpolateProvider) {
+      $interpolateProvider.startSymbol('{[');
+      $interpolateProvider.endSymbol(']}');
+    }]);
+    
+    
 </script>
 </body>
 </html>

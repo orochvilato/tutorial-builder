@@ -18,8 +18,7 @@ class MouseEvent(Event):
 class KeyEvent(Event):
     def __init__(self,type=None,x=None,y=None,keycode=None,activeWindow=None):
         Event.__init__(self,type,x,y,activeWindow)
-        self.keycode = keycode
-        
+       
 class KMEventsBase:
     def __init__(self):
         self.bindings = {'key':{},'mouse':{}}
@@ -45,9 +44,10 @@ class KMEventsBase:
         for type in types:
             self.bindings['mouse'][type] = self.bindings.get(type,[]) + [callback]
 
-    def bindKey(self,types,keycode,callback):
+    def bindKey(self,types,callback):
+        # 'Press<code>' 'Release<code'
         for type in types:
-            self.bindings['key'][(type,keycode)] = self.bindings.get((type,keycode),[]) + [callback]
+            self.bindings['key'][type] = self.bindings.get(type,[]) + [callback]
 
     def executeMouseCallbacks(self,event):
        
@@ -59,3 +59,18 @@ class KMEventsBase:
         if 'all' in self.bindings['mouse'].keys():
             for callback in self.bindings['mouse']['all']:
                 callback(event)
+
+    def executeKeyCallbacks(self,event):
+       
+        event.activeWindow = self.getActiveWindowGeometry()
+        if event.type in self.bindings['key'].keys():
+             # in a thread ?
+            for callback in self.bindings['key'][event.type]:
+                callback(event)
+        if 'all' in self.bindings['key'].keys():
+            for callback in self.bindings['key']['all']:
+                callback(event)
+                
+                
+                
+                
