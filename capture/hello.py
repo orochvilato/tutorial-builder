@@ -39,7 +39,7 @@ def main():
     app.debug = True
     app.run()
     logging.info('end')
-        
+    
 if __name__ == '__main__':
     #Timer(1,openbrowser,()).start()
     

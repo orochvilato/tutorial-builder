@@ -31,7 +31,9 @@
   var app = angular.module("captureApp",[])
     .controller('MainCtrl', ['$http',function($http) {
       var self = this;
-      checkStatus();
+
+      self.icheck = setInterval(function(){ checkStatus() }, 1000);
+      
       function checkStatus() {
         $http.get('/checkstatus').then(function(response) {
             self.status = response.data;
@@ -53,12 +55,6 @@
       };
       
       self.action = function(action) {
-        if (action === 'start') {
-            self.icheck = setInterval(function(){ checkStatus() }, 1000);
-        }
-        if (action === 'stop') {
-            clearInterval(self.icheck);
-        }
         $http.get('/action/'+action).then(function(response) {
             console.log(response);
             checkStatus();

@@ -33,7 +33,8 @@ class Snapshot():
                            'mouseMiddlePress','mouseMiddleRelease','mouseMiddleSlide',
                            'mouseWheelUp','mouseWheelDown'],self.takeSnap)
         self.km.bindKey(['PressF8'],self.toggle)
-        
+        self.km.startRecord()
+
     def init(self,title):
         self.i = 0
         self.seq = 0
@@ -62,7 +63,7 @@ class Snapshot():
         self.snapOn = False
         self.km.endRecord()
         
-    def toggle(self):
+    def toggle(self,event=None):
         if self.snapOn:
             self.stop()
         else:
