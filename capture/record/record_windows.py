@@ -10,7 +10,7 @@ from events import MouseEvent,KeyEvent
 
 from threading import Timer,Thread
 import pythoncom, pyHook
-from win32gui import GetWindowRect, GetForegroundWindow, GetWindowText
+from win32gui import GetWindowRect, GetForegroundWindow, GetWindowText, IsWindow
 
 
 class WindowsKMEvents(Thread):
@@ -52,16 +52,23 @@ class WindowsKMEvents(Thread):
     def getActiveWindowGeometry(self):
        
         window = GetForegroundWindow()
-        geo = GetWindowRect(window)
-       
-        self.activeWindow = dict(name=GetWindowText(window),x=geo[0],y=geo[1],w=geo[2]-geo[0],h=geo[3]-geo[1])
+        if IsWindow(window):
+            geo = GetWindowRect(window)
+            name = GetWindowText(window)
+            self.activeWindow = dict(name="none",x=geo[0],y=geo[1],w=geo[2]-geo[0],h=geo[3]-geo[1])
         return self.activeWindow
     
     def _OnMouseEvent(self,event):
         self.mousex = event.Position[0]
         self.mousey = event.Position[1]
         eventType = self.equivtable[event.MessageName]
-        button = eventType[9:] if 'mousePress' in eventType else None
+        if 'mousePress' in eventType:
+            button = eventType[10:]
+        elif 'mouseRelease':
+            button = eventType[12:]
+        else:
+            button = None
+        
         e = MouseEvent(type=eventType,x=event.Position[0],y=event.Position[1],button=button,count=1,activeWindow=self.getActiveWindowGeometry())
         if e:
             self.eventCallback(e)

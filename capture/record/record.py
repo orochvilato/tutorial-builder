@@ -209,8 +209,10 @@ class KMEvents:
                 event = self.buttonLast[event.type]      
             else:
                 self.buttonLast[event.type] = event
+            
         elif 'mouseRelease' in event.type:
             self.buttonHold[event.button] = False
+            
         elif 'mouseMove' in event.type:
             if any(self.buttonHold.values()):
                 event.type = "mouseSlide"
