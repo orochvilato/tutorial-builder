@@ -16,9 +16,9 @@ import time
 from threading import Timer
 import json
 
-def test(event):
-    print event.type,event.x,event.y
-        
+def cb(event):
+    print event.type,event.count
+          
 class Snapshot():
     def __init__(self,title="test",focus=True):
         self.snapOn = False
@@ -28,12 +28,11 @@ class Snapshot():
         self.parameters = dict(autodelay=0.5)
         self.init(title)
         self.km = KMEvents()
-        self.km.bindMouse(['mouseLeftPress', 'mouseLeftRelease','mouseLeftSlide',
-                           'mouseRightPress','mouseRightRelease','mouseRightSlide',
-                           'mouseMiddlePress','mouseMiddleRelease','mouseMiddleSlide',
-                           'mouseWheelUp','mouseWheelDown'],self.takeSnap)
-        self.km.bindKey(['PressF8'],self.toggle)
-        self.km.startRecord()
+        self.km.bindCallback(('mousePressLeft', 'mouseReleaseLeft','mouseSlide',
+                           'mousePressRight','mouseReleaseRight',
+                           'mousePressMiddle','mouseReleaseMiddle',
+                           'mouseWheelUp','mouseWheelDown'),cb) #self.takeSnap)
+        #self.km.start()
 
     def init(self,title):
         self.i = 0
@@ -47,13 +46,14 @@ class Snapshot():
         return {'n':len(self.timeline),'on':self.snapOn}
     def start(self):
         self.snapOn = True
-        self.km.startRecord()
+        self.km.start()
         Timer(self.parameters['autodelay'],self.takeTimedSnap,()).start()
         self.seq += 1
         if not self.starttime:
             self.starttime = time.time()
         
     def takeTimedSnap(self):
+        print self.km
         x,y = self.km.getMouseXY()
         self.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
         if self.snapOn:
@@ -61,7 +61,7 @@ class Snapshot():
     
     def stop(self):
         self.snapOn = False
-        self.km.endRecord()
+        self.km.end()
         
     def toggle(self,event=None):
         if self.snapOn:
@@ -167,24 +167,70 @@ class Snapshot():
         return diff                
 
 
+
+#eventTypes = 'mousePressLeft', 'mouseReleaseLeft'
+#             'mousePressRight','mouseReleaseRight'
+#             'mousePressMiddle','mouseReleaseMiddle'
+#             'mouseWheelUp','mouseWheelDown','mouseMove','mouseSlide'
 class KMEvents:
     def __init__(self):
         import platform
         if platform.system() in ['Linux']:
             from record_xlib import XlibKMEvents
-            self.platformKMEvt = XlibKMEvents()
+            self.platformKMEvt = XlibKMEvents
+        self.buttonLast = dict()
+        self.buttonHold = dict()
+        self.bindings = {}
+        self.capture = False
+        self.toggleKey = 'keyPressF8'
+    def setToggleKey(self,tkey):
+        self.toggleKey = tkey
+    def toggleCapture(self):
+        self.capture = not self.capture        
     def getMouseXY(self):
-        return self.platformKMEvt.getMouseXY()
+        return self.kme.getMouseXY()
     def getActiveWindowGeometry(self):
-        return self.platformKMEvt.getActiveWindowGeometry()
-    def startRecord(self):
-        self.platformKMEvt.startRecord()
-    def endRecord(self):
-        self.platformKMEvt.endRecord()
-    def bindMouse(self,type,callback):
-        self.platformKMEvt.bindMouse(type,callback)
-    def bindKey(self,type,callback):
-        self.platformKMEvt.bindKey(type,callback)        
+        return self.kme.activeWindow
+    def start(self):
+        self.kme = self.platformKMEvt(self.eventCallback)
+        self.kme.start()
+    def end(self):
+        self.kme.stop()
+    def eventCallback(self,event):
+        now = time.time()
+        if event.type == self.toggleKey:
+            self.toggleCapture()
+            return
+        if not self.capture:
+            return
+       
+        if 'mousePress' in event.type:
+            self.buttonHold[event.button] = True
+            if event.type in self.buttonLast.keys() and (now-self.buttonLast[event.type].time)<0.3:
+                self.buttonLast[event.type].count += 1
+                event = self.buttonLast[event.type]      
+            else:
+                self.buttonLast[event.type] = event
+        elif 'mouseRelease' in event.type:
+            self.buttonHold[event.button] = False
+        elif 'mouseMove' in event.type:
+            if any(self.buttonHold.values()):
+                event.type = "mouseSlide"
 
-     
+        self.executeCallbacks(event)
+        
+    def bindCallback(self,types,callback):
+        if not isinstance(types,tuple):
+            types = (types)
+        self.bindings[types] = self.bindings.get(types,[]) + [callback]
+                      
+    def executeCallbacks(self,event):
+        import threading
+        for binding,callbacks in self.bindings.iteritems():
+            if event.type in binding:
+                for callback in callbacks:
+                    threading.Thread(target=callback,args=(event,)).start()
+                    
+        
+ 
 
