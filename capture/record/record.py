@@ -53,7 +53,7 @@ class Snapshot():
             self.starttime = time.time()
         
     def takeTimedSnap(self):
-        print self.km
+        
         x,y = self.km.getMouseXY()
         self.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
         if self.snapOn:
@@ -178,6 +178,9 @@ class KMEvents:
         if platform.system() in ['Linux']:
             from record_xlib import XlibKMEvents
             self.platformKMEvt = XlibKMEvents
+        elif platform.system() in ['Windows']:
+            from record_windows import WindowsKMEvents
+            self.platformKMEvt = WindowsKMEvents
         self.buttonLast = dict()
         self.buttonHold = dict()
         self.bindings = {}
