@@ -31,7 +31,7 @@ class Snapshot():
         self.km.bindCallback(('mousePressLeft', 'mouseReleaseLeft','mouseSlide',
                            'mousePressRight','mouseReleaseRight',
                            'mousePressMiddle','mouseReleaseMiddle',
-                           'mouseWheelUp','mouseWheelDown'),cb) #self.takeSnap)
+                           'mouseWheelUp','mouseWheelDown'), self.takeSnap)
         #self.km.start()
 
     def init(self,title):
@@ -44,6 +44,7 @@ class Snapshot():
         self.title = title
     def status(self):
         return {'n':len(self.timeline),'on':self.snapOn}
+        
     def start(self):
         self.snapOn = True
         self.km.start()
@@ -53,7 +54,6 @@ class Snapshot():
             self.starttime = time.time()
         
     def takeTimedSnap(self):
-        
         x,y = self.km.getMouseXY()
         self.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
         if self.snapOn:
@@ -71,22 +71,17 @@ class Snapshot():
     
 
     def takeSnap(self,event=None,force=False):
-        if self.lock:
-            print "locked",event.type
+        if not self.km.capture:
+            return
+        now = time.time()
+        if not self.lock:
+            self.lock = True
+            self.img = ImageGrab.grab()
+            self.lock = False
         while self.lock:
             pass
-        self.lock = True
-                
-        now = time.time()
+        self.timeline.append(dict(timestamp=now,event=event,image=self.img,active=event.activeWindow))
         
-        if force or (self.snapOn and now-self.lastCall>0.25):
-            # active window deja dans Event
-            img = ImageGrab.grab()
-            self.timeline.append(dict(timestamp=time.time(),event=event,image=img,active=event.activeWindow))
-            if event.type != 'timed':
-                self.lastCall = now
-       
-        self.lock = False
         
     
     def saveElement(self,tlelt):
