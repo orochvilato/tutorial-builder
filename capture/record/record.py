@@ -16,8 +16,6 @@ import time
 from threading import Timer
 import json
 
-def cb(event):
-    print event.type,event.count
           
 class Snapshot():
     def __init__(self,title="test",focus=True):
@@ -25,7 +23,7 @@ class Snapshot():
         self.focus = focus
         self.lastEvent = None
         self.lock = False
-        self.parameters = dict(autodelay=0.5)
+        self.parameters = dict(autoDelay=0.5,followActive=True,toggleKey='twosuperior')
         self.init(title)
         self.km = KMEvents()
         self.km.bindCallback(('mousePressLeft', 'mouseReleaseLeft','mouseSlide',
@@ -33,7 +31,16 @@ class Snapshot():
                            'mousePressMiddle','mouseReleaseMiddle',
                            'mouseWheelUp','mouseWheelDown'), self.takeSnap)
         #self.km.start()
+        self.km.setToggleKey('keyPress%s' % self.parameters['toggleKey'])
 
+    def setParameters(self,params):
+        import json
+        self.parameters = json.loads(params)
+        self.km.setToggleKey('keyPress%s' % self.parameters['toggleKey'])
+        
+    def getParameters(self):
+        return self.parameters
+        
     def init(self,title):
         self.i = 0
         self.seq = 0
@@ -41,6 +48,7 @@ class Snapshot():
         self.timeline = []
         self.scenario = []
         self.lastCall = time.time()
+        self.lastSnap = None
         self.title = title
     def status(self):
         return {'n':len(self.timeline),'on':self.snapOn}
@@ -48,7 +56,7 @@ class Snapshot():
     def start(self):
         self.snapOn = True
         self.km.start()
-        Timer(self.parameters['autodelay'],self.takeTimedSnap,()).start()
+        Timer(self.parameters['autoDelay'],self.takeTimedSnap,()).start()
         self.seq += 1
         if not self.starttime:
             self.starttime = time.time()
@@ -57,7 +65,7 @@ class Snapshot():
         x,y = self.km.getMouseXY()
         self.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
         if self.snapOn:
-            Timer(self.parameters['autodelay'],self.takeTimedSnap,()).start()
+            Timer(self.parameters['autoDelay'],self.takeTimedSnap,()).start()
     
     def stop(self):
         self.snapOn = False
@@ -71,12 +79,15 @@ class Snapshot():
     
 
     def takeSnap(self,event=None,force=False):
+       
         if not self.km.capture:
             return
         now = time.time()
         if not self.lock:
             self.lock = True
             self.img = ImageGrab.grab()
+            if self.lastSnap and self.diffImage(self.img,self.lastSnap)<0.1:
+                self.img = self.lastSnap
             self.lock = False
         while self.lock:
             pass
@@ -201,6 +212,7 @@ class KMEvents:
             return
         if not self.capture:
             return
+
        
         if 'mousePress' in event.type:
             self.buttonHold[event.button] = True
@@ -214,7 +226,8 @@ class KMEvents:
             self.buttonHold[event.button] = False
             
         elif 'mouseMove' in event.type:
-            if any(self.buttonHold.values()):
+            
+            if any(self.buttonHold.values()) and (now-max([b.time for b in self.buttonLast.values()]))>0.3:
                 event.type = "mouseSlide"
 
         self.executeCallbacks(event)

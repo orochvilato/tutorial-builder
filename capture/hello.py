@@ -28,6 +28,16 @@ def test():
 @app.route('/checkstatus')
 def checkstatus():
     return json.dumps(S.status())
+
+@app.route('/getparams')
+def getparams():
+    return json.dumps(S.getParameters())
+
+@app.route('/setparams',methods=['POST'])
+def setparams():
+    from flask import request
+    S.setParameters(request.data)
+    return "ok"
     
 def openbrowser():
     webbrowser.open('http://localhost:5000/hello',new=1)

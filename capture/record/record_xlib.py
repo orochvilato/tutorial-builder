@@ -121,12 +121,16 @@ class XlibKMEvents(Thread):
                 #   eventType = 'mouseWheel'+'Up' if event.detail==4 else 'Down'                    
                     logging.debug('ButtonPress %s' % eventType)
                     e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,button=['Left','Middle','Right'][event.detail-1],count=1,activeWindow=self.getActiveWindowGeometry())
+                else:
+                    e = None
             elif event.type == X.ButtonRelease:
                 if event.detail<4:
                     eventType = 'mouseRelease'+['Left','Middle','Right'][event.detail-1]
+                    button = ['Left','Middle','Right'][event.detail-1]
                 else:
-                    eventType = 'mouseWheel'+'Up' if event.detail==4 else 'Down'                    
-                e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,button=['Left','Middle','Right'][event.detail-1],count=1,activeWindow=self.getActiveWindowGeometry())
+                    eventType = 'mouseWheel'+'Up' if event.detail==4 else 'Down'
+                    button = None
+                e = MouseEvent(type=eventType,x=event.root_x,y=event.root_y,button=button,count=1,activeWindow=self.getActiveWindowGeometry())
                 logging.debug("ButtonRelease %s" % eventType)
             elif event.type == X.MotionNotify:
                 eventType = 'mouseMove'

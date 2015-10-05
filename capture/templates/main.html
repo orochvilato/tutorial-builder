@@ -19,8 +19,24 @@
 <button type="button" class="btn btn-default" ng-click="ctrl.action('stop')"><i class="fa fa-stop"></i> Stop</button>
 <button type="button" class="btn btn-default" ng-click="ctrl.action('save')">Save</button>
 </div> <!-- col-md-12 -->
+</div> <!-- row -->
+<div class="row">
 <div class="col-md-12">
-<p><p>
+<div class="panel panel-default">
+  <div class="panel-body">
+    <form class="form-horizontal" name="parametersForm" ng-submit="ctrl.postParameters()">
+      <div class="form-group" ng-repeat="(key, value) in ctrl.params">
+        <label for="{[ key ]}" class="col-sm-2 control-label" ng-bind="key"></label>
+        <div class="col-sm-10" ng-switch on="ctrl.typeof(ctrl.params[key])">
+          <input type="text" class="form-control" ng-switch-when="number" ng-model="ctrl.params[key]" smart-float>
+          <input type="text" class="form-control" ng-switch-when="string" ng-model="ctrl.params[key]">
+          <div class="checkbox" ng-switch-when="boolean"><input type="checkbox" ng-model="ctrl.params[key]"></div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-default" ng-disabled="parametersForm.$invalid">Submit</button>
+    </form>
+  </div> <!-- panel-body -->
+</div> <!-- panel -->
 </div> <!-- col-md-12 -->
 </div> <!-- row -->
 </div> <!-- container -->
@@ -28,40 +44,98 @@
   src="static/js/angular.min.js">
 </script>
 <script type="text/javascript">
-  var app = angular.module("captureApp",[])
-    .controller('MainCtrl', ['$http',function($http) {
-      var self = this;
+  var app = angular.module("captureApp",[]);
+  app.directive('smartFloat', function ($filter) {
+    var FLOAT_REGEXP_1 = /^\$?\d+.(\d{3})*(\,\d*)$/; //Numbers like: 1.123,56
+    var FLOAT_REGEXP_2 = /^\$?\d+,(\d{3})*(\.\d*)$/; //Numbers like: 1,123.56
+    var FLOAT_REGEXP_3 = /^\$?\d+(\.\d*)?$/; //Numbers like: 1123.56
+    var FLOAT_REGEXP_4 = /^\$?\d+(\,\d*)?$/; //Numbers like: 1123,56
 
+    return {
+        require: 'ngModel',
+        link: function (scope, elm, attrs, ctrl) {
+            ctrl.$parsers.unshift(function (viewValue) {
+                if (FLOAT_REGEXP_1.test(viewValue)) {
+                    ctrl.$setValidity('float', true);
+                    return parseFloat(viewValue.replace('.', '').replace(',', '.'));
+                } else if (FLOAT_REGEXP_2.test(viewValue)) {
+                        ctrl.$setValidity('float', true);
+                        return parseFloat(viewValue.replace(',', ''));
+                } else if (FLOAT_REGEXP_3.test(viewValue)) {
+                        ctrl.$setValidity('float', true);
+                        return parseFloat(viewValue);
+                } else if (FLOAT_REGEXP_4.test(viewValue)) {
+                        ctrl.$setValidity('float', true);
+                        return parseFloat(viewValue.replace(',', '.'));
+                }else {
+                    ctrl.$setValidity('float', false);
+                    return undefined;
+                }
+            });
+
+            ctrl.$formatters.unshift(
+               function (modelValue) {
+                   return $filter('number')(parseFloat(modelValue) , 2);
+               }
+           );
+        }
+    };
+  });
+  app.controller('MainCtrl', ['$http','$scope',function($http,$scope) {
+      var self = this;
       self.icheck = setInterval(function(){ checkStatus() }, 1000);
+      
+      self.typeof = function(obj) {
+        return typeof obj;
+      }
+
       
       function checkStatus() {
         $http.get('/checkstatus').then(function(response) {
-            self.status = response.data;
-            if (self.status.on) {
-              self.statusclass = 'label-success';
-            } else {
-              self.statusclass = 'label-danger';
-            }
-            console.log(self.status)
+          self.status = response.data;
+          if (self.status.on) {
+            self.statusclass = 'label-success';
+          } else {
+            self.statusclass = 'label-danger';
+          }
+          //console.log(self.status)
         });
       }
       
       self.test = function() {
         $http.get('/test').then(function(response) {
-            console.log(response);
+          console.log(response);
         }, function(errResponse) {
-            console.error('error /test');
+          console.error('error /test');
         });
       };
       
       self.action = function(action) {
         $http.get('/action/'+action).then(function(response) {
-            console.log(response);
-            checkStatus();
+          console.log(response);
+          checkStatus();
         }, function(errResponse) {
-            console.error('error /action');
+          console.error('error /action');
         });
       };
+      self.readParams = function() {
+        $http.get('/getparams').then(function(response) {
+          console.log(response);
+          self.params = response.data;
+        }, function(errResponse) {
+            console.error('error /getparams');
+        });
+      };
+      self.postParameters = function() {
+        $http.post('/setparams',self.params).then(function(response) {
+          console.log(response);
+        }, function(errResponse) {
+            console.error('error /setparams');
+        });
+        console.log('post :'+self.params);
+      }; 
+      self.params = self.readParams();
+        
 
     }]);
   app.config(['$interpolateProvider', function($interpolateProvider) {
