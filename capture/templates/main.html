@@ -28,7 +28,7 @@
       <div class="form-group" ng-repeat="(key, value) in ctrl.params">
         <label for="{[ key ]}" class="col-sm-2 control-label" ng-bind="key"></label>
         <div class="col-sm-10" ng-switch on="ctrl.typeof(ctrl.params[key])">
-          <input type="text" class="form-control" ng-switch-when="number" ng-model="ctrl.params[key]" smart-float>
+          <input type="text" name="{[ctrl.params[key]]}" id="{[ctrl.params[key]]}" class="form-control" ng-switch-when="number" ng-model="ctrl.params[key]" smart-float>
           <input type="text" class="form-control" ng-switch-when="string" ng-model="ctrl.params[key]">
           <div class="checkbox" ng-switch-when="boolean"><input type="checkbox" ng-model="ctrl.params[key]"></div>
         </div>
@@ -88,7 +88,12 @@
       self.typeof = function(obj) {
         return typeof obj;
       }
-
+      $scope.$watch('params',function(newValue,oldvalue) {
+        if(newValue) {
+            alert('Model is valid');
+            //Can do a ajax model submit.
+        }
+      });
       
       function checkStatus() {
         $http.get('/checkstatus').then(function(response) {
