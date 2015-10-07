@@ -16,7 +16,7 @@ import datetime
 import time
 
 import json
-
+from parameters import Parameters
           
 class Snapshot():
     def __init__(self,title="test",focus=True):
@@ -24,7 +24,9 @@ class Snapshot():
         self.focus = focus
         self.lastEvent = None
         self.lock = False
-        self.parameters = dict(autoDelay=0.5,followActive=True,toggleKey='twosuperior')
+        self.params = Parameters()
+        self.params.define(id='autoDelay',desc='Delai entre les capture auto (en s)',type='float',default=0.5)
+        
         self.init(title)
         self.km = KMEvents()
         self.km.bindCallback(('mousePressLeft', 'mouseReleaseLeft','mouseSlide',
