@@ -4,7 +4,7 @@ from threading import Timer
 import json
 
 app = Flask(__name__)
-from record.record import Snapshot
+from snapshots import Snapshot
 S = Snapshot()
 @app.route('/hello')
 @app.route('/hello/<name>')
