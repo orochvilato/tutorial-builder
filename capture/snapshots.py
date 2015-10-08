@@ -20,14 +20,16 @@ import json
 from parameters import Parameters
           
 class Snapshot():
-    def __init__(self,parameters,title="test",focus=True):
+    def __init__(self,parameters,title="test"):
         self.snapOn = False
-        self.focus = focus
         self.lastEvent = None
         self.lock = False
         self.parameters = parameters
         self.parameters.define(id='autoDelay',desc='Delai entre les capture auto (en s)',type='float',default=0.5)
         self.parameters.define(id='toggleKey',desc='Touche debut/arrêt prise de snapshots', type='string', default='twosuperior')
+        self.parameters.define(id='followActive',desc='Observer la fenêtre active uniquement', type='boolean', default=False)
+        self.parameters.define(id='cropX',desc="Correction X (crop)", type='integer',default=0)
+        self.parameters.define(id='cropY',desc="Correction Y (crop)", type='integer',default=0)
         self.setProfile('default')
         self.init(title)
         self.km = KMEvents()
@@ -81,7 +83,7 @@ class Snapshot():
     
 
     def takeSnap(self,event=None,force=False):
-       
+        
         if not self.km.capture:
             return
         now = time.time()
@@ -118,7 +120,7 @@ class Snapshot():
         for i,elt in enumerate(self.timeline):
             current = elt['image']
             print i,elt['event'].type
-            if self.focus:
+            if self.params.followActive:
                 active=elt['active']
                 
                 current = current.crop((active['x'],active['y'],active['x']+active['w'],active['y']+active['h']))
@@ -144,8 +146,8 @@ class Snapshot():
             if (tlelt['event'].type!='timed') or (i+1<len(self.timeline) and self.timeline[i+1]['event'].type!='timed'):
                 if not tlelt['iname'] in imagesnames:
                     active = tlelt['active']        
-                    crop = tlelt['image'].crop((active['x'],active['y'],active['x']+active['w'],active['y']+active['h']))
-                    #crop.save(inameactive,'PNG')
+                    crop = tlelt['image'].crop((active['x']-self.params.cropX,active['y']-self.params.cropY,active['x']+active['w']+self.params.cropX,active['y']+active['h']+self.params.cropY))
+                    crop.save(tlelt['inameactive'],'PNG')
                     tlelt['image'].save(tlelt['iname'],'PNG')            
 
                 self.scenario.append(dict(sequence=self.seq,

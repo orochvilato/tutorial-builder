@@ -1,0 +1,22 @@
+{
+    "defs": {
+        "autoDelay": {
+            "default": 0.5,
+            "desc": "Delai entre les capture auto (en s)",
+            "group": "default",
+            "type": "float"
+        },
+        "toggleKey": {
+            "default": "twosuperior",
+            "desc": "Touche debut/arr\u00eat prise de snapshots",
+            "group": "default",
+            "type": "string"
+        }
+    },
+    "values": {
+        "default": {
+            "autoDelay": 0.7,
+            "toggleKey": "twosuperior"
+        }
+    }
+}

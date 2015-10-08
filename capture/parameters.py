@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+
+import json
+
 class Error(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -43,18 +46,32 @@ class Properties(object):
     
 
 class Parameters(object):
-    def __init__(self):
+    def __init__(self,defs={},values={'default':dict()}):
         # id, name, desc, type, group, profile
-        self._defs = {}
-        self._values = {'default':dict()}
+        self._defs = defs
+        self._values = values
 
+    def save(self,filename):
+        try:
+            with open(filename,'w+') as f:
+                f.write(json.dumps(dict(defs=self._defs,values=self._values),sort_keys=True,
+                  indent=4, separators=(',', ': ')))
+        except:
+            raise ParameterError('unable to save parameters!')
+            
+    def load(self,filename):
+        with open(filename,'r') as f:
+            data = json.load(f)
+        self._defs = data['defs']
+        self._values = data['values']
+        #raise ParameterError('unable to load parameters')
+            
     def define(self,id,desc="",type="string",group="default",default=None):
-        if not id in self._defs.keys():
-            self._defs[id] = dict(desc=desc,type=type,group=group,default=default)
+        
+        self._defs[id] = dict(desc=desc,type=type,group=group,default=default)
+        if not id in self._values.keys():
             self._values['default'][id] = default
-        else:
-            raise ParameterError('Parameter already defined')
-
+    
     def createProfile(self,profile):
         if not profile in self._values.keys():
             self._values[profile] = dict()
@@ -88,7 +105,10 @@ class Parameters(object):
                 else:
                     if v!= dp[k]:
                         cp[k] = v
-                        
+
+    def getDefs(self):
+        return self._defs
+                                    
     def defs(self,id):
         if id in self._defs.keys():
             return self._defs[id]            

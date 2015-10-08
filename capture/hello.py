@@ -8,6 +8,7 @@ app = Flask(__name__)
 from snapshots import Snapshot
 from parameters import Parameters
 P = Parameters()
+P.load('capture.config.json')
 S = Snapshot(parameters=P)
 profile = 'default'
 @app.route('/hello')
@@ -35,7 +36,7 @@ def checkstatus():
 
 @app.route('/getparams')
 def getparams():
-    return json.dumps(P.getProfile(profile))
+    return json.dumps(dict(defs=P.getDefs(),values=P.getProfile(profile)))
 
 @app.route('/setparams',methods=['POST'])
 def setparams():
