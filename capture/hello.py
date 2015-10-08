@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import webbrowser
 from flask import Flask, render_template
 from threading import Timer
@@ -5,7 +6,10 @@ import json
 
 app = Flask(__name__)
 from snapshots import Snapshot
-S = Snapshot()
+from parameters import Parameters
+P = Parameters()
+S = Snapshot(parameters=P)
+profile = 'default'
 @app.route('/hello')
 @app.route('/hello/<name>')
 def hello_world(name=None):
@@ -31,12 +35,12 @@ def checkstatus():
 
 @app.route('/getparams')
 def getparams():
-    return json.dumps(S.getParameters())
+    return json.dumps(P.getProfile(profile))
 
 @app.route('/setparams',methods=['POST'])
 def setparams():
     from flask import request
-    S.setParameters(request.data)
+    P.setProfile(profile,json.loads(request.data))
     return "ok"
     
 def openbrowser():

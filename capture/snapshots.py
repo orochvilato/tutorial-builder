@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import sys
 import time
@@ -19,14 +20,15 @@ import json
 from parameters import Parameters
           
 class Snapshot():
-    def __init__(self,title="test",focus=True):
+    def __init__(self,parameters,title="test",focus=True):
         self.snapOn = False
         self.focus = focus
         self.lastEvent = None
         self.lock = False
-        self.params = Parameters()
-        self.params.define(id='autoDelay',desc='Delai entre les capture auto (en s)',type='float',default=0.5)
-        
+        self.parameters = parameters
+        self.parameters.define(id='autoDelay',desc='Delai entre les capture auto (en s)',type='float',default=0.5)
+        self.parameters.define(id='toggleKey',desc='Touche debut/arrêt prise de snapshots', type='string', default='twosuperior')
+        self.setProfile('default')
         self.init(title)
         self.km = KMEvents()
         self.km.bindCallback(('mousePressLeft', 'mouseReleaseLeft','mouseSlide',
@@ -34,15 +36,12 @@ class Snapshot():
                            'mousePressMiddle','mouseReleaseMiddle',
                            'mouseWheelUp','mouseWheelDown'), self.takeSnap)
         #self.km.start()
-        self.km.setToggleKey('keyPress%s' % self.parameters['toggleKey'])
-
-    def setParameters(self,params):
-        import json
-        self.parameters = json.loads(params)
-        self.km.setToggleKey('keyPress%s' % self.parameters['toggleKey'])
-        
-    def getParameters(self):
-        return self.parameters
+        self.reload()
+    
+    def reload(self):
+        self.km.setToggleKey('keyPress%s' % self.params.toggleKey)
+    def setProfile(self,profile):
+        self.params = self.parameters.profile(profile)
         
     def init(self,title):
         self.i = 0
@@ -59,7 +58,7 @@ class Snapshot():
     def start(self):
         self.snapOn = True
         self.km.start()
-        Timer(self.parameters['autoDelay'],self.takeTimedSnap,()).start()
+        Timer(self.params.autoDelay,self.takeTimedSnap,()).start()
         self.seq += 1
         if not self.starttime:
             self.starttime = time.time()
@@ -68,7 +67,7 @@ class Snapshot():
         x,y = self.km.getMouseXY()
         self.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
         if self.snapOn:
-            Timer(self.parameters['autoDelay'],self.takeTimedSnap,()).start()
+            Timer(self.params.autoDelay,self.takeTimedSnap,()).start()
     
     def stop(self):
         self.snapOn = False
