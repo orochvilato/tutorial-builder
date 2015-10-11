@@ -26,11 +26,28 @@ class KMEvents:
         return self.kme.getMouseXY()
     def getActiveWindowGeometry(self):
         return self.kme.activeWindow
+    
     def start(self):
         self.kme = self.platformKMEvt(self.eventCallback)
         self.kme.start()
+    
     def end(self):
         self.kme.stop()
+
+    def captureToggleKey(self):
+        self.kme = self.platformKMEvt(self.toggleKeyCallback)
+        self.captureTK = False
+        self.kme.start()
+        while not self.captureTK:
+            time.sleep(0.5)
+        self.kme.stop()
+        return self.toggleKey
+        
+    def toggleKeyCallback(self,event):
+        if 'keyPress' in event.type:
+            self.toggleKey = event.type
+            self.captureTK = True
+            
     def eventCallback(self,event):
         now = time.time()
         if event.type == self.toggleKey:

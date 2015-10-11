@@ -28,7 +28,7 @@ def action(name):
     
 @app.route('/test')
 def test():
-    return json.dumps(['a','b'])
+    return json.dumps(S.captureToggleKey())
     
 @app.route('/checkstatus')
 def checkstatus():
@@ -43,7 +43,8 @@ def setparams():
     from flask import request
     P.setProfile(profile,json.loads(request.data))
     return "ok"
-    
+
+
 def openbrowser():
     webbrowser.open('http://localhost:5000/hello',new=1)
 

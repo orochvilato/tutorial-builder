@@ -59,6 +59,9 @@ class Snapshot():
         self.title = title
     def status(self):
         return {'n':len(self.timeline),'on':self.snapOn}
+    
+    def captureToggleKey(self):
+        return {'key': self.km.captureToggleKey() }
         
     def start(self):
         self.snapOn = True
