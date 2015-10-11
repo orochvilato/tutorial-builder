@@ -40,7 +40,8 @@ class Snapshot():
                            'mousePressMiddle','mouseReleaseMiddle',
                            'mouseWheelUp','mouseWheelDown'), self.takeSnap)
         #self.km.start()
-        self.reload()
+        self.parameters.setHook('toggleKey',self.reload)
+
     
     def reload(self):
         self.km.setToggleKey('keyPress%s' % self.params.toggleKey)

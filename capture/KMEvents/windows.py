@@ -76,6 +76,8 @@ class WindowsKMEvents(Thread):
         
     def _OnKeyboardEvent(self,event):
         eventType = 'keyPress' + event.Key
+       
+        
         e = KeyEvent(type=eventType,x=self.mousex,y=self.mousey,activeWindow=self.getActiveWindowGeometry())
         self.eventCallback(e)
         return True

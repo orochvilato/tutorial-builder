@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from threading import Thread
 import json
 
 class Error(Exception):
@@ -39,6 +40,8 @@ class Properties(object):
             self._parameters.setProfile(self._profile,value)
         elif name in self._parameters._values['default'].keys():
             self._parameters._values[self._profile][name] = value
+            if name in self._parameters._hooks.keys():
+                self._parameters.executeHooks(name)
         else:
             raise ParameterError('Parameter not found')
             
@@ -49,7 +52,18 @@ class Parameters(object):
         # id, name, desc, type, group, profile
         self._defs = defs
         self._values = values
-
+        self._hooks = dict()
+    
+            
+    def setHook(self,id,hook):
+        if id in self._defs.keys():
+            self._hooks[id] = self._hooks.get(id,[]) + [hook]
+        else:
+            raise ParameterError('Parameter not found')
+    def executeHooks(self,name):
+        if name in self._hooks.keys():
+            for hook in self._hooks[name]:
+                Thread(target=hook).start()
     def save(self,filename):
         try:
             with open(filename,'w+') as f:
@@ -104,7 +118,7 @@ class Parameters(object):
                 else:
                     if v!= dp[k]:
                         cp[k] = v
-
+                self.executeHooks(k)
     def getDefs(self):
         return self._defs
                                     
