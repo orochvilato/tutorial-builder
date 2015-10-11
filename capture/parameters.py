@@ -10,7 +10,6 @@ class ParameterError(Error):
     """Exception raised for errors in the input.
 
     Attributes:
-        name -- name of parameter
         msg  -- explanation of the error
     """
 

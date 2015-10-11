@@ -28,8 +28,10 @@ class Snapshot():
         self.parameters.define(id='autoDelay',desc='Delai entre les capture auto (en s)',type='float',default=0.5)
         self.parameters.define(id='toggleKey',desc='Touche debut/arrêt prise de snapshots', type='string', default='twosuperior')
         self.parameters.define(id='followActive',desc='Observer la fenêtre active uniquement', type='boolean', default=False)
-        self.parameters.define(id='cropX',desc="Correction X (crop)", type='integer',default=0)
-        self.parameters.define(id='cropY',desc="Correction Y (crop)", type='integer',default=0)
+        self.parameters.define(id='cropL',desc="Correction Left (crop)", type='integer',default=0)
+        self.parameters.define(id='cropR',desc="Correction Right (crop)", type='integer',default=0)
+        self.parameters.define(id='cropT',desc="Correction Top (crop)", type='integer',default=0)
+        self.parameters.define(id='cropB',desc="Correction Bottom (crop)", type='integer',default=0)
         self.setProfile('default')
         self.init(title)
         self.km = KMEvents()
@@ -119,6 +121,7 @@ class Snapshot():
         last = None
         for i,elt in enumerate(self.timeline):
             current = elt['image']
+            active = None
             print i,elt['event'].type
             if self.params.followActive:
                 active=elt['active']
@@ -146,7 +149,7 @@ class Snapshot():
             if (tlelt['event'].type!='timed') or (i+1<len(self.timeline) and self.timeline[i+1]['event'].type!='timed'):
                 if not tlelt['iname'] in imagesnames:
                     active = tlelt['active']        
-                    crop = tlelt['image'].crop((active['x']-self.params.cropX,active['y']-self.params.cropY,active['x']+active['w']+self.params.cropX,active['y']+active['h']+self.params.cropY))
+                    crop = tlelt['image'].crop((active['x']+self.params.cropL,active['y']+self.params.cropT,active['x']+active['w']+self.params.cropR,active['y']+active['h']+self.params.cropB))
                     crop.save(tlelt['inameactive'],'PNG')
                     tlelt['image'].save(tlelt['iname'],'PNG')            
 
