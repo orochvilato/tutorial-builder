@@ -6,6 +6,42 @@
             "group": "default",
             "type": "float"
         },
+        "cropB": {
+            "default": 0,
+            "desc": "Correction Bottom (crop)",
+            "group": "default",
+            "type": "integer"
+        },
+        "cropL": {
+            "default": 0,
+            "desc": "Correction Left (crop)",
+            "group": "default",
+            "type": "integer"
+        },
+        "cropR": {
+            "default": 0,
+            "desc": "Correction Right (crop)",
+            "group": "default",
+            "type": "integer"
+        },
+        "cropT": {
+            "default": 0,
+            "desc": "Correction Top (crop)",
+            "group": "default",
+            "type": "integer"
+        },
+        "followActive": {
+            "default": false,
+            "desc": "Observer la fen\u00eatre active uniquement",
+            "group": "default",
+            "type": "boolean"
+        },
+        "title": {
+            "default": "snap",
+            "desc": "Nom de la sequence",
+            "group": "default",
+            "type": "string"
+        },
         "toggleKey": {
             "default": "twosuperior",
             "desc": "Touche debut/arr\u00eat prise de snapshots",
@@ -15,7 +51,13 @@
     },
     "values": {
         "default": {
-            "autoDelay": 0.7,
+            "autoDelay": 0.5,
+            "cropB": 0,
+            "cropL": 0,
+            "cropR": 0,
+            "cropT": 0,
+            "followActive": false,
+            "title": "test",
             "toggleKey": "twosuperior"
         }
     }

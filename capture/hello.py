@@ -8,8 +8,11 @@ app = Flask(__name__)
 from snapshots import Snapshot
 from parameters import Parameters
 P = Parameters()
-P.load('capture.config.json')
+
+
 S = Snapshot(parameters=P)
+P.load('capture.config.json')
+
 profile = 'default'
 @app.route('/hello')
 @app.route('/hello/<name>')
@@ -42,6 +45,7 @@ def getparams():
 def setparams():
     from flask import request
     P.setProfile(profile,json.loads(request.data))
+    P.save('capture.config.json')
     return "ok"
 
 

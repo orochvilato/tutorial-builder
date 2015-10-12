@@ -25,6 +25,7 @@ class Snapshot():
         self.lastEvent = None
         self.lock = False
         self.parameters = parameters
+        self.parameters.define(id='title',desc='Nom de la sequence',type='string',default='snap')
         self.parameters.define(id='autoDelay',desc='Delai entre les capture auto (en s)',type='float',default=0.5)
         self.parameters.define(id='toggleKey',desc='Touche debut/arrêt prise de snapshots', type='string', default='twosuperior')
         self.parameters.define(id='followActive',desc='Observer la fenêtre active uniquement', type='boolean', default=False)
@@ -105,31 +106,14 @@ class Snapshot():
         
         
     
-    def saveElement(self,tlelt):
-        self.i += 1
-        iname = 'im-%03d-%d.png'% (self.i,self.seq)
-        inameactive = 'im-%03d-active.png'% (self.i)
-        #im = self.timeline[i]['image']
-        #event = self.timeline[i]['event']
-        #font = ImageFont.truetype("arial.ttf", 25)
-
-        #draw = ImageDraw.Draw(im)
-        #draw.ellipse((event.x-5, event.y-5, event.x+5, event.y+5), fill=(255,255,255))
-        #draw.text((event.x,event.y),event.type,(0,0,0),font=font)
-
-        tlelt['iname'] = iname
-        tlelt['inameactive'] = inameactive
-            
         
     def saveTimeline(self):
         last = None
+        imnum = 0
         for i,elt in enumerate(self.timeline):
             current = elt['image']
-            active = None
-            print i,elt['event'].type
+            active=elt['active']
             if self.params.followActive:
-                active=elt['active']
-                
                 current = current.crop((active['x'],active['y'],active['x']+active['w'],active['y']+active['h']))
             event = elt['event']
             if last:
@@ -138,28 +122,46 @@ class Snapshot():
                 diff = 100
             
             if not last or (diff>0.5) or (last['active'] != active) or ('Press' in elt['event'].type) :
-                    self.saveElement(elt)
-                    elt['saved'] = True
+                    imnum += 1
+                    elt['iname'] = 'im%d' % imnum
             else:
                 elt['iname'] = last['iname']
-                elt['inameactive'] = last['inameactive']
             
             last = elt
             lastimage = current
-        imagesnames = []
+
+        self.imagesnames = {}
+        import os
+        self.savepath = os.path.join('snap',"%s" % self.params.title)
+        os.makedirs(self.savepath)
+        
+        self.imsaved = 0
+        self.lastimage = ""
+        def save(elt):
+            self.imsaved += 1
+            active = elt['active']        
+            crop = elt['image'].crop((active['x']+self.params.cropL,active['y']+self.params.cropT,active['x']+active['w']+self.params.cropR,active['y']+active['h']+self.params.cropB))
+            crop.save(os.path.join(self.savepath,"%s-%03d-a.png" % (self.params.title,self.imsaved)),'PNG')
+            elt['image'].save(os.path.join(self.savepath,"%s-%03d.png" % (self.params.title,self.imsaved)),'PNG')            
+            self.imagesnames[elt['iname']] = "%s-%03d.png" % (self.params.title,self.imsaved)
+
         for i,tlelt in enumerate(self.timeline):
-
-            
-            if (tlelt['event'].type!='timed') or (i+1<len(self.timeline) and self.timeline[i+1]['event'].type!='timed'):
-                if not tlelt['iname'] in imagesnames:
-                    active = tlelt['active']        
-                    crop = tlelt['image'].crop((active['x']+self.params.cropL,active['y']+self.params.cropT,active['x']+active['w']+self.params.cropR,active['y']+active['h']+self.params.cropB))
-                    crop.save(tlelt['inameactive'],'PNG')
-                    tlelt['image'].save(tlelt['iname'],'PNG')            
-
+            if (tlelt['event'].type=='timed'):
+                self.lasttimed = tlelt
+            else:
+                if not tlelt['iname'] in imagesnames.keys():
+                    save(tlelt)
+                
+                t = tlelt['timestamp']-self.starttime
+                if (self.lasttimed['iname']!=self.lastimage):
+                    save(self.lasttimed)
+                    print "%03.2d loadImage %s" % (t,self.imagesnames[self.lasttimed['iname']])
+                    self.lastimage = self.lasttimed['iname']
+                print "%03.2d %s" % (t,tlelt['event'].type)
+                print "%03.2d loadImage %s" % (t,self.imagesnames[tlelt['iname']])
+                self.lastimage = tlelt['iname']
                 self.scenario.append(dict(sequence=self.seq,
-                                  image=tlelt['iname'],
-                                  imageactive=tlelt['inameactive'],
+                                  image=self.imagesnames[tlelt['iname']],
                                   i=i,
                                   zoom=1,
                                   type=tlelt['event'].type,

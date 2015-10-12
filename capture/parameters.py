@@ -3,6 +3,7 @@
 from threading import Thread
 import json
 
+
 class Error(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -76,15 +77,15 @@ class Parameters(object):
         with open(filename,'r') as f:
             data = json.load(f)
         self._defs = data['defs']
+       
         self._values = data['values']
         #raise ParameterError('unable to load parameters')
             
     def define(self,id,desc="",type="string",group="default",default=None):
-        
         self._defs[id] = dict(desc=desc,type=type,group=group,default=default)
         if not id in self._values.keys():
             self._values['default'][id] = default
-    
+            
     def createProfile(self,profile):
         if not profile in self._values.keys():
             self._values[profile] = dict()
@@ -101,7 +102,7 @@ class Parameters(object):
         if profile in self._values.keys():
             dp = self._values['default']
             cp = self._values[profile]
-            return dict((k,cp[k] if k in cp.keys() else dp[k]) for k in dp.keys())
+            return dict((k,cp[k] if k in cp.keys() else dp[k]) for k in self._defs.keys())
         else:
             raise ParameterError('Profile not found')
 

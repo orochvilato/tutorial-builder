@@ -63,12 +63,14 @@ class XlibKMEvents(Thread):
     def getActiveWindowGeometry(self):
         window = self.local_dpy.get_input_focus().focus
         wmname = "unamed"
-        root = window.query_tree().root.id
-        while window.query_tree().parent.id != root:
-           if not wmname:
-               wmname = window.get_wm_name()
-           window = window.query_tree().parent
-
+        try:
+            root = window.query_tree().root.id
+            while window.query_tree().parent.id != root:
+               if not wmname:
+                   wmname = window.get_wm_name()
+               window = window.query_tree().parent
+        except:
+            pass
         geo = window.get_geometry()
         
         self.activeWindow = dict(name=wmname.decode('utf8','ignore'),x=geo.x,y=geo.y,w=geo.width,h=geo.height)
