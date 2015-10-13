@@ -71,7 +71,10 @@ class XlibKMEvents(Thread):
                window = window.query_tree().parent
         except:
             pass
-        geo = window.get_geometry()
+        try:
+            geo = window.get_geometry()
+        except:
+            geo = self.local_dpy.screen().root.get_geometry()
         
         self.activeWindow = dict(name=wmname.decode('utf8','ignore'),x=geo.x,y=geo.y,w=geo.width,h=geo.height)
         return self.activeWindow

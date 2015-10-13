@@ -30,6 +30,12 @@
             "group": "default",
             "type": "integer"
         },
+        "diffPct": {
+            "default": 1,
+            "desc": "Ecart tol\u00e9r\u00e9 entre les images (en %)",
+            "group": "default",
+            "type": "float"
+        },
         "followActive": {
             "default": false,
             "desc": "Observer la fen\u00eatre active uniquement",
@@ -51,12 +57,13 @@
     },
     "values": {
         "default": {
-            "autoDelay": 0.5,
+            "autoDelay": 0.8,
             "cropB": 0,
             "cropL": 0,
             "cropR": 0,
             "cropT": 0,
-            "followActive": false,
+            "diffPct": 1,
+            "followActive": true,
             "title": "test",
             "toggleKey": "twosuperior"
         }

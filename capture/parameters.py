@@ -56,9 +56,11 @@ class Parameters(object):
         self._hooks = dict()
     
             
-    def setHook(self,id,hook):
+    def setHook(self,id,hook,execute=False):
         if id in self._defs.keys():
             self._hooks[id] = self._hooks.get(id,[]) + [hook]
+            if execute:
+                Thread(target=hook).start()
         else:
             raise ParameterError('Parameter not found')
     def executeHooks(self,name):
@@ -76,9 +78,16 @@ class Parameters(object):
     def load(self,filename):
         with open(filename,'r') as f:
             data = json.load(f)
-        self._defs = data['defs']
-       
-        self._values = data['values']
+        for id,value in data['defs'].iteritems():
+            if id in self._defs.keys():
+                self._defs[id] = value
+                
+        for profile in data['values'].keys():
+             if not profile in self._values.keys():
+                self._values[profile] = data['values'][profile]
+             else:
+                for id,value in data['values'][profile].iteritems():
+                    self._values[profile][id] = value
         #raise ParameterError('unable to load parameters')
             
     def define(self,id,desc="",type="string",group="default",default=None):
