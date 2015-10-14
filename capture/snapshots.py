@@ -41,6 +41,7 @@ class Snapshot():
                            'mousePressRight','mouseReleaseRight',
                            'mousePressMiddle','mouseReleaseMiddle',
                            'mouseWheelUp','mouseWheelDown'), self.takeSnap)
+        self.km.bindCallback(('mouseMove'), self.cancelTimedSnap)
         #self.km.start()
         self.parameters.setHook('toggleKey',self.reload,execute=True)
 
@@ -60,6 +61,8 @@ class Snapshot():
         self.lastCall = time.time()
         self.lastSnap = None
         self.title = title
+        self.cancelSnap = False
+        
     def status(self):
         return {'n':len(self.timeline),'on':self.snapOn}
     
@@ -69,19 +72,29 @@ class Snapshot():
     def start(self):
         self.snapOn = True
         self.km.start()
-        Timer(self.params.autoDelay,self.takeTimedSnap,()).start()
+        self.timer = Timer(self.params.autoDelay,self.takeTimedSnap,())
+        self.timer.start()
         self.seq += 1
         if not self.starttime:
             self.starttime = time.time()
         
     def takeTimedSnap(self):
-        x,y = self.km.getMouseXY()
-        self.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
+        if not self.cancelSnap:
+            x,y = self.km.getMouseXY()
+            self.takeSnap(Event(type="timed",x=x,y=y,activeWindow=self.km.getActiveWindowGeometry()),force=True)
+        else:
+            print 'cancelsnap'
+        self.cancelSnap = False
         if self.snapOn:
             Timer(self.params.autoDelay,self.takeTimedSnap,()).start()
     
+    def cancelTimedSnap(self,event=None):
+        self.cancelSnap = True        
+
     def stop(self):
         self.snapOn = False
+        self.cancelSnap = True
+        
         self.km.end()
         
     def toggle(self,event=None):
@@ -95,6 +108,8 @@ class Snapshot():
         
         if not self.km.capture:
             return
+            
+        self.cancelTimedSnap()
         now = time.time()
         self.waiting = 0
         if not self.lock:
@@ -128,6 +143,7 @@ class Snapshot():
             active=elt['active']
             if self.params.followActive:
                 currentcrop = current.crop((active['x'],active['y'],active['x']+active['w'],active['y']+active['h']))
+                elt['imagecrop'] = currentcrop
             event = elt['event']
             if last:
                 diff = self.diffImage(current,lastimage)
@@ -162,29 +178,32 @@ class Snapshot():
             elt['image'].save(os.path.join(self.savepath,"%s-%03d.png" % (self.params.title,self.imsaved)),'PNG')            
             self.imagesnames[elt['iname']] = "%s-%03d.png" % (self.params.title,self.imsaved)
         
-        self.lasttimed = sorttl[0]
         self.lastevt = sorttl[0]
+        self.last = sorttl[0]
+        def compare(t1,t2):
+            return  ((t1['iname']!=t2['iname']) 
+                    and  self.diffImage(t1['image'],t2['image'])>self.params.diffPct
+                    and (self.params.followActive
+                         or self.diffImage(t1,t2)>self.params.diffPct)
+                    )
         for i,tlelt in enumerate(sorttl):
-            if (tlelt['event'].type=='timed'):
-                self.lasttimed = tlelt
-            else:
+            if (tlelt['event'].type!='timed'):
                 t = tlelt['timestamp']-self.starttime
-                if (self.lasttimed['iname']!=self.lastimage) and self.lasttimed['timestamp']>self.lastevt['timestamp'] and 'Press' in tlelt['event'].type:
-                    save(self.lasttimed)
-                    print "%03.2f loadImage %s" % (t,self.imagesnames[self.lasttimed['iname']])
-                    self.lastimage = self.lasttimed['iname']
+                if compare(self.lastevt,self.last) and 'Press' in tlelt['event'].type:
+                    save(self.lastevt)
+                    print "%03.2f loadImage %s" % (t,self.imagesnames[self.lastevt['iname']])
+                    self.last = self.lastevt
                 if not tlelt['iname'] in self.imagesnames.keys():
                     save(tlelt)
-                print tlelt['event'].type,count
                 if 'Press' in tlelt['event'].type and count==0: 
                     print "%03.2f %s %d" % (t,tlelt['event'].button,tlelt['event'].count)
                     count = tlelt['event'].count
                 if 'Release' in tlelt['event'].type:
                     count -= 1
                     
-                if (tlelt['iname']!=self.lastimage):
+                if compare(tlelt,self.last):
                     print "%03.2f loadImage %s" % (t,self.imagesnames[tlelt['iname']])
-                self.lastimage = tlelt['iname']
+                self.last = tlelt
                 self.scenario.append(dict(sequence=self.seq,
                                   image=self.imagesnames[tlelt['iname']],
                                   i=i,
@@ -196,11 +215,11 @@ class Snapshot():
                                   mousebtn=tlelt['event'].button if hasattr(tlelt['event'],'button') else 0,
                                   btnccount=tlelt['event'].count if hasattr(tlelt['event'],'count') else 0,
                                   activewindow=tlelt['active']))
-                self.lastevt = tlelt
+            self.lastevt = tlelt
 
-        if (self.lasttimed['iname']!=self.lastimage):
-            save(self.lasttimed)
-            print "%03.2f loadImage %s" % (self.lastevt['timestamp']-self.starttime,self.imagesnames[self.lasttimed['iname']])
+        if compare(self.last,self.lastevt):
+            save(self.lastevt)
+            print "%03.2f loadImage %s" % (self.lastevt['timestamp']-self.starttime,self.imagesnames[self.lastevt['iname']])
 
         import json
         js = "var sce=%s;" % json.dumps(self.scenario,sort_keys=True, indent=4, separators=(',', ': '))
