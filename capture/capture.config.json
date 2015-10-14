@@ -57,7 +57,7 @@
     },
     "values": {
         "default": {
-            "autoDelay": 0.8,
+            "autoDelay": 0.25,
             "cropB": 0,
             "cropL": 0,
             "cropR": 0,
@@ -65,7 +65,7 @@
             "diffPct": 1,
             "followActive": true,
             "title": "test",
-            "toggleKey": "twosuperior"
+            "toggleKey": "[65041]"
         }
     }
 }

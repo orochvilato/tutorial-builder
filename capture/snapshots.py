@@ -179,22 +179,26 @@ class Snapshot():
             self.imagesnames[elt['iname']] = "%s-%03d.png" % (self.params.title,self.imsaved)
         
         self.lastevt = sorttl[0]
-        self.last = sorttl[0]
+        self.last = None
         def compare(t1,t2):
+            if not t1 or not t2:
+                return True
             return  ((t1['iname']!=t2['iname']) 
-                    and  self.diffImage(t1['image'],t2['image'])>self.params.diffPct
-                    and (self.params.followActive
-                         or self.diffImage(t1,t2)>self.params.diffPct)
+                    and (
+                    ((not self.params.followActive) and self.diffImage(t1['image'],t2['image'])>self.params.diffPct)
+                    or (self.params.followActive and self.diffImage(t1['imagecrop'],t2['imagecrop'])>self.params.diffPct)
+                    )
                     )
         for i,tlelt in enumerate(sorttl):
+            print i,tlelt['event'].type
             if (tlelt['event'].type!='timed'):
                 t = tlelt['timestamp']-self.starttime
                 if compare(self.lastevt,self.last) and 'Press' in tlelt['event'].type:
-                    save(self.lastevt)
+                    if not self.lastevt['iname'] in self.imagesnames.keys():
+                        save(self.lastevt)
                     print "%03.2f loadImage %s" % (t,self.imagesnames[self.lastevt['iname']])
                     self.last = self.lastevt
-                if not tlelt['iname'] in self.imagesnames.keys():
-                    save(tlelt)
+                    
                 if 'Press' in tlelt['event'].type and count==0: 
                     print "%03.2f %s %d" % (t,tlelt['event'].button,tlelt['event'].count)
                     count = tlelt['event'].count
@@ -202,10 +206,11 @@ class Snapshot():
                     count -= 1
                     
                 if compare(tlelt,self.last):
+                    if not tlelt['iname'] in self.imagesnames.keys():
+                        save(tlelt)
                     print "%03.2f loadImage %s" % (t,self.imagesnames[tlelt['iname']])
-                self.last = tlelt
+                    self.last = tlelt
                 self.scenario.append(dict(sequence=self.seq,
-                                  image=self.imagesnames[tlelt['iname']],
                                   i=i,
                                   zoom=1,
                                   type=tlelt['event'].type,
