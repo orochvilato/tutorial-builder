@@ -57,7 +57,7 @@
     },
     "values": {
         "default": {
-            "autoDelay": 0.25,
+            "autoDelay": 0.5,
             "cropB": 0,
             "cropL": 0,
             "cropR": 0,

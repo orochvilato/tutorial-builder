@@ -6,8 +6,8 @@
     #viewport {
         //float: left;
         position: relative;
-        width:960px;
-        height:540px;
+        width:1200px;
+        height:675px;
         margin:0 auto;
         overflow: hidden;
         border: solid;
@@ -83,38 +83,37 @@ $(document).ready(function(){
     var clickcircle = 50;
     var step = 0;
     var zoom;
-    var viewport_w = 960;
-    var viewport_h = 540;
+    var viewport_w = 1200;
+    var viewport_h = 675;
     var cursor_x = 450;
     var cursor_y = 350;
     var im_w = 1920;
     var im_h = 1080;
-    
-    $("#im1").attr('src',sce[0]['image']);
+    var current;
+    var im_x;
+    var im_y;
+    var viewport_x;
+    var viewport_y;
+    var tx;
+    var ty;
+    var zoomActive=false;
+
+    $("#im1").attr('src',sce['image']);
     $("button").click(function(){
-        go(0,step);
+        go(step);
         step++;
-       
     });    
     $('next').click(function() {
     });
-   function go(seq,step) {
-       var current;
-       var im_x;
-       var im_y;
-       var viewport_x;
-       var viewport_y;
-       var tx;
-       var ty;
-       var zoomActive=false;
+   function go(step) {
 
-       function showStepImage(step) {
-           console.log('show step '+step);
-           $("#im1").attr('src',sce[step]['image']);
+       function showImage(image) {
+           console.log('showImage '+image);
+           $("#im1").attr('src',image);
        }
-       function showImageCallback(step) {
-            console.log('call step '+step);
-            return function() { showStepImage(step);};
+       function showImageCallback(image) {
+            console.log('showImageCallback '+image);
+            return function() { showImage(image);};
        }
        function updateVars() {
            current = sce[step];
@@ -152,12 +151,25 @@ $(document).ready(function(){
            updateZoom(z);
            mySequence.push({ e: $('#im1'), p: {scale:zoom, left: tx+"px",top:ty+"px"}, options: { duration: speed,  sequenceQueue: queue, easing:'easeInSine' } });
         }
-       function changeImage(step,speed) {
+       function zoomWindow(x,y,w,h) {
+         var zw = viewport_w/w;
+         var zh = viewport_h/h;
+         if (zw>zh) {
+            var z = zh;
+         } else {
+            var z = zw;
+         }
+         if (z>3) {
+            z = 3;
+         }
+         zoom = z;
+       }
+       function changeImage(image,speed) {
            if (speed == undefined) {
             speed=50;
            }
        
-           mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showImageCallback(step) } });
+           mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showImageCallback(image) } });
        
        }
        function moveCursor(nx,ny,speed,complete) {
@@ -173,24 +185,19 @@ $(document).ready(function(){
 
            }
        }
-       function startClick(btn,double,full,speed) {
+       function startClick(btn,repeat,full,speed) {
            if (speed == undefined) {
             speed=400;
            }
-           console.log(double);
-           if (double) {
-               var repeat = 2;
-           } else {
-               var repeat = 1;
-           }
+           console.log(repeat);
            if (full == undefined) {
             full=true;
            }
-           if (btn == 1) {
+           if (btn == 'Left') {
             var color = 'green';
-           } else if (btn == 2) {
+           } else if (btn == 'Right') {
             var color = 'yellow';
-           } else if (btn == 3) {
+           } else if (btn == 'Middle') {
             var color = 'red';
            }
            console.log(color);
@@ -214,50 +221,42 @@ $(document).ready(function(){
        //updateVars();
        var mySequence = [];
        var lastZoom = 1.5;
-       console.log(sce[0]['sequence'])
-       moveCursor(300,200,500);
-       for (i=step;(i<sce.length && sce[i]['sequence']==seq );i++) {
-           current = sce[i];
-        
-           if (current['type']==='press') {
-               moveCursor(current['mousex'],current['mousey'],1500,showImageCallback(i));
-               zoomImage(current['zoom'],1500);
+       //moveCursor(300,200,500);
+       var seq = sce.steps[step];
+       seq.forEach(function(s) {
+           if ((s.action === 'stepStart') || (s.action === 'showImage') || (s.action === 'stepEnd')) {
+             changeImage(s.image,300);
+           }
+           if (s.action === 'click') {
+             moveCursor(s.x,s.y,1500);
+             zoomImage(1.5,1000);
+             startClick(s.button,s.count,true,150);
+             zoomImage(1,100);
+           }
+           
+       });
+//           if (current['type']==='press') {
+  //             moveCursor(current['mousex'],current['mousey'],1500,showImageCallback(i));
+    //           zoomImage(current['zoom'],1500);
                //if (sce[step+1]['type']!='move') {
-               fullclick = true;
+      //         fullclick = true;
                //} else {
                // fullclick = false;
                //}
-               startClick(current['mousebtn'],current['btndouble'],fullclick,150);
-            endClick(50);
-           } else {
-             if (lastZoom != current['zoom']) {
-                 moveCursor(current['mousex'],current['mousey'],1500,showImageCallback(i));
+        //       startClick(current['mousebtn'],current['btndouble'],fullclick,150);
+//            endClick(50);
+ //          } else {
+   //          if (lastZoom != current['zoom']) {
+   //              moveCursor(current['mousex'],current['mousey'],1500,showImageCallback(i));
 
-                 zoomImage(current['zoom'],1500);
-             } else {
-                 moveCursor(current['mousex'],current['mousey'],500,showImageCallback(i));
-            }
-            }
+     //            zoomImage(current['zoom'],1500);
+     //        } else {
+    //             moveCursor(current['mousex'],current['mousey'],500,showImageCallback(i));
+    //        }
+     //      }
        
-       //
-       //if (step<sce.length) {
-       //   while ((sce[step+1]['type']!='press') && sce[step+1]['type']!='end') {
-       //     step = step +1;
-       //     if (sce[step]['type'] === 'move') {
-       //     } else {
-       //         changeImage(step,50);
-       //         if (sce[step-1]['type'] === 'move') {
-       //          endClick(50);
-       //         }
-
-       //     }
-       //
-       //     zoomImage(1.5,500);
-       //     console.log(step+","+sce[step]['type']);
-       //   }
-       //}
-       lastZoom = current['zoom']
-       }
+     //  lastZoom = current['zoom'];
+     //  }
        console.log(mySequence);
        $.Velocity.RunSequence(mySequence);
      

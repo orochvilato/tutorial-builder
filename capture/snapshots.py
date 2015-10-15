@@ -43,7 +43,7 @@ class Snapshot():
                            'mouseWheelUp','mouseWheelDown'), self.takeSnap)
         self.km.bindCallback(('mouseMove'), self.cancelTimedSnap)
         #self.km.start()
-        self.parameters.setHook('toggleKey',self.reload,execute=True)
+        self.parameters.setHook('toggleKey',self.reload)
 
     
     def reload(self):
@@ -152,11 +152,12 @@ class Snapshot():
             else:
                 diff = 100
                 diffcrop = 100
-            
-            if (diff>self.params.diffPct) or (self.params.followActive and diffcrop>self.params.diffPct):# or (last['active'] != active) or ('Press' in elt['event'].type) :
+            if (diff>self.params.diffPct) and (not self.params.followActive 
+                                               or (self.params.followActive and diffcrop>self.params.diffPct )): #or (last['active'] != active):# or ('Press' in elt['event'].type) 
                     imnum += 1
                     elt['iname'] = 'im%d' % imnum
                     lastimage = current
+                    
                     lastimagecrop = currentcrop
                     #elt['image'].save(os.path.join(self.savepath,"tmp%d.png" % imnum),'PNG')
             else:
@@ -175,8 +176,9 @@ class Snapshot():
             active = elt['active']        
             crop = elt['image'].crop((active['x']+self.params.cropL,active['y']+self.params.cropT,active['x']+active['w']+self.params.cropR,active['y']+active['h']+self.params.cropB))
             crop.save(os.path.join(self.savepath,"%s-%03d-a.png" % (self.params.title,self.imsaved)),'PNG')
-            elt['image'].save(os.path.join(self.savepath,"%s-%03d.png" % (self.params.title,self.imsaved)),'PNG')            
-            self.imagesnames[elt['iname']] = "%s-%03d.png" % (self.params.title,self.imsaved)
+            impath = os.path.join(self.savepath,"%s-%03d.png" % (self.params.title,self.imsaved))
+            elt['image'].save(impath,'PNG')            
+            self.imagesnames[elt['iname']] = impath
         
         self.lastevt = sorttl[0]
         self.last = None
@@ -189,17 +191,38 @@ class Snapshot():
                     or (self.params.followActive and self.diffImage(t1['imagecrop'],t2['imagecrop'])>self.params.diffPct)
                     )
                     )
+        step = []
+        prevstep = []
+        scenario = dict(name=self.params.title,steps=[])
         for i,tlelt in enumerate(sorttl):
-            print i,tlelt['event'].type
+            #print i,tlelt['event'].type
             if (tlelt['event'].type!='timed'):
                 t = tlelt['timestamp']-self.starttime
-                if compare(self.lastevt,self.last) and 'Press' in tlelt['event'].type:
-                    if not self.lastevt['iname'] in self.imagesnames.keys():
-                        save(self.lastevt)
+                if 'Press' in tlelt['event'].type:
+                    if step:
+                        prevstep = step
+                        scenario['steps'].append(step)
+                        step=[]
+                        
+                    if compare(self.lastevt,self.last):
+                        if not self.lastevt['iname'] in self.imagesnames.keys():
+                            save(self.lastevt)
+                    if not scenario['steps']:
+                       scenario['image'] = self.imagesnames[self.lastevt['iname']]
+                    if prevstep:
+                        prevstep.append(dict(action='stepEnd',image=self.imagesnames[self.lastevt['iname']]))
+                    step.append(dict(action='stepStart',image=self.imagesnames[self.lastevt['iname']]))
                     print "%03.2f loadImage %s" % (t,self.imagesnames[self.lastevt['iname']])
                     self.last = self.lastevt
                     
                 if 'Press' in tlelt['event'].type and count==0: 
+                    step.append(dict(action='click',
+                                     button=tlelt['event'].button,
+                                     x=tlelt['event'].x,
+                                     y=tlelt['event'].y,
+                                     count=tlelt['event'].count,
+                                     active=tlelt['active'],
+                                     zoom=1))
                     print "%03.2f %s %d" % (t,tlelt['event'].button,tlelt['event'].count)
                     count = tlelt['event'].count
                 if 'Release' in tlelt['event'].type:
@@ -209,6 +232,8 @@ class Snapshot():
                     if not tlelt['iname'] in self.imagesnames.keys():
                         save(tlelt)
                     print "%03.2f loadImage %s" % (t,self.imagesnames[tlelt['iname']])
+                    step.append(dict(action='loadImage',image=self.imagesnames[tlelt['iname']]))
+
                     self.last = tlelt
                 self.scenario.append(dict(sequence=self.seq,
                                   i=i,
@@ -224,10 +249,12 @@ class Snapshot():
 
         if compare(self.last,self.lastevt):
             save(self.lastevt)
-            print "%03.2f loadImage %s" % (self.lastevt['timestamp']-self.starttime,self.imagesnames[self.lastevt['iname']])
+            step.append(dict(action='stepEnd',image=self.imagesnames[self.lastevt['iname']]))
 
+            print "%03.2f loadImage %s" % (self.lastevt['timestamp']-self.starttime,self.imagesnames[self.lastevt['iname']])
+        scenario['steps'].append(step)
         import json
-        js = "var sce=%s;" % json.dumps(self.scenario,sort_keys=True, indent=4, separators=(',', ': '))
+        js = "var sce=%s;" % json.dumps(scenario,sort_keys=True, indent=4, separators=(',', ': '))
         with open("data.js",'w') as f:
             f.write(js)
         

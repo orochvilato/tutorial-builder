@@ -84,10 +84,10 @@ class Parameters(object):
                 
         for profile in data['values'].keys():
              if not profile in self._values.keys():
-                self._values[profile] = data['values'][profile]
-             else:
-                for id,value in data['values'][profile].iteritems():
-                    self._values[profile][id] = value
+                self.createProfile(profile)
+             prof = self.profile(profile)
+             for id,value in data['values'][profile].iteritems():
+                   setattr(prof,id,value)
         #raise ParameterError('unable to load parameters')
             
     def define(self,id,desc="",type="string",group="default",default=None):
