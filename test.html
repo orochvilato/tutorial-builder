@@ -69,7 +69,7 @@
     }
 </style>
 <link href="css/bootstrap.min.css" rel="stylesheet">
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="js/jquery-1.11.3.min.js"></script>
 <script src="js/velocity.min.js"></script>
 <script src="js/velocity.ui.js"></script>
 <script src="js/bootstrap.min.js"></script>
@@ -82,9 +82,13 @@ $(document).ready(function(){
     //});
     var clickcircle = 50;
     var step = 0;
+    var substep = 0;
     var zoom;
     var viewport_w = 1200;
     var viewport_h = 675;
+    var viewport = document.getElementById('viewport');
+    var viewport_w = viewport.clientWidth;
+    var viewport_h = viewport.clientHeight;
     var cursor_x = 450;
     var cursor_y = 350;
     var im_w = 1920;
@@ -92,20 +96,23 @@ $(document).ready(function(){
     var current;
     var im_x;
     var im_y;
-    var viewport_x;
-    var viewport_y;
+    var viewport_x = cursor_x;
+    var viewport_x0;
+    var viewport_y = cursor_y;
+    var viewport_y0;
     var tx;
     var ty;
     var zoomActive=false;
+    var play=false;
 
     $("#im1").attr('src',sce['image']);
-    $("button").click(function(){
-        go(step);
-        step++;
+    $("#start").click(function(){
+        play=true;
+        go();
     });    
     $('next').click(function() {
     });
-   function go(step) {
+   function go() {
 
        function showImage(image) {
            console.log('showImage '+image);
@@ -127,8 +134,8 @@ $(document).ready(function(){
        function updateCursor(x,y) {
            im_x = x;
            im_y = y;
-           viewport_x = (x /im_w) * viewport_w;
-           viewport_y = (y /im_h) * viewport_h;
+           viewport_x = (x /im_w) * viewport_w*zoom - viewport_x0;
+           viewport_y = (y /im_h) * viewport_h*zoom - viewport_y0;
        }
        
        function updateZoom(z) {
@@ -151,24 +158,68 @@ $(document).ready(function(){
            updateZoom(z);
            mySequence.push({ e: $('#im1'), p: {scale:zoom, left: tx+"px",top:ty+"px"}, options: { duration: speed,  sequenceQueue: queue, easing:'easeInSine' } });
         }
-       function zoomWindow(x,y,w,h) {
-         var zw = viewport_w/w;
-         var zh = viewport_h/h;
+       function zoomWindow(x,y,w,h,speed,queue) {
+         if (speed == undefined) {
+            speed=1500;
+           }
+           if (queue == undefined) {
+            queue = true;
+           }
+         x = x - w * 0.01;
+         y = y - h * 0.01;
+         w = w * 1.02;
+         h = h * 1.02;
+         
+         console.log('x='+x+', y='+y+', w='+w+', h='+h);
+         var vx = x / im_w * viewport_w;
+         var vy = y / im_h * viewport_h;
+         var vw = w / im_w * viewport_w;
+         var vh = h / im_h * viewport_h;
+         console.log('vx='+vx+', vy='+vy+', vw='+vw+', vh='+vh);
+
+         var zw = viewport_w/vw;
+         var zh = viewport_h/vh;
+         console.log('zw='+zw,' zh='+zh);
          if (zw>zh) {
             var z = zh;
          } else {
             var z = zw;
          }
-         if (z>3) {
-            z = 3;
+         if (z>2) {
+            z = 2;
          }
-         zoom = z;
+         if (z<1) {
+            z = 1;
+         }
+         
+         // Pour centrer la fenetre
+         cw = (viewport_w - vw * z) /2 - vx*z
+         if (cw>0) cw=0;
+         ch = (viewport_h - vh * z) /2 - vy*z
+         if (ch>0) ch=0;
+         console.log('cw='+cw+', ch='+ch);
+         
+         var _tx = viewport_w * (z-1) / 2 + cw; 
+         var _ty = viewport_h * (z-1) / 2 + ch;
+         if ((_tx != tx) && (_ty != ty) && ( z != zoom)) {
+             tx = _tx;
+             ty = _ty;
+             zoom = z;
+         
+             viewport_x0 = -cw;
+             viewport_y0 = -ch;
+             console.log("viewport_x0="+viewport_x0+", viewport_y0="+viewport_y0);
+             console.log("z="+z);
+             console.log("tx="+tx+", ty="+ty);
+             mySequence.push({ e: $('#im1'), p: {scale:zoom, left: tx+"px",top:ty+"px"}, options: { duration: speed,  easing:'easeInSine' } });
+         }
+
        }
        function changeImage(image,speed) {
            if (speed == undefined) {
             speed=50;
            }
-       
+           console.log('viewport_x='+viewport_x+', viewport_y='+viewport_y);
            mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showImageCallback(image) } });
        
        }
@@ -181,7 +232,7 @@ $(document).ready(function(){
                console.log('udateCursor '+nx+','+ny);
                updateCursor(nx,ny);
                mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: complete } });
-               mySequence.push({e: $('.click'), p:{left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { duration:0, sequenceQueue: false }});
+               mySequence.push({e: $('.click'), p:{left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { duration:0, sequenceQueue: true }});
 
            }
        }
@@ -220,59 +271,37 @@ $(document).ready(function(){
        
        //updateVars();
        var mySequence = [];
-       var lastZoom = 1.5;
-       //moveCursor(300,200,500);
-       var seq = sce.steps[step];
-       seq.forEach(function(s) {
-           if ((s.action === 'stepStart') || (s.action === 'showImage') || (s.action === 'stepEnd')) {
-             changeImage(s.image,300);
-           }
-           if (s.action === 'click') {
-             moveCursor(s.x,s.y,1500);
-             zoomImage(1.5,1000);
-             startClick(s.button,s.count,true,150);
-             zoomImage(1,100);
-           }
-           
-       });
-//           if (current['type']==='press') {
-  //             moveCursor(current['mousex'],current['mousey'],1500,showImageCallback(i));
-    //           zoomImage(current['zoom'],1500);
-               //if (sce[step+1]['type']!='move') {
-      //         fullclick = true;
-               //} else {
-               // fullclick = false;
-               //}
-        //       startClick(current['mousebtn'],current['btndouble'],fullclick,150);
-//            endClick(50);
- //          } else {
-   //          if (lastZoom != current['zoom']) {
-   //              moveCursor(current['mousex'],current['mousey'],1500,showImageCallback(i));
+       for (j=0;j<sce.steps.length;j++) {
+           var seq = sce.steps[j];
+           for (i=0;i<seq.length;i++) {
+               s = seq[i];
+               if ((s.action === 'stepStart') || (s.action === 'showImage') || (s.action === 'stepEnd')) {
+                   changeImage(s.image,300);
+               }
+               if (s.action === 'click') {
+                   zoomWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
+                   moveCursor(s.x,s.y,1500);
+                   startClick(s.button,s.count,true,150);
+               }
 
-     //            zoomImage(current['zoom'],1500);
-     //        } else {
-    //             moveCursor(current['mousex'],current['mousey'],500,showImageCallback(i));
-    //        }
-     //      }
-       
-     //  lastZoom = current['zoom'];
-     //  }
-       console.log(mySequence);
+           }
+       }
+       zoomWindow(0,0,im_w,im_h,1000);
        $.Velocity.RunSequence(mySequence);
-     
+
    }
    $(function () {
   $('[data-toggle="popover"]').popover()
-})
+  })
 });
 </script> 
 </head>
 <body>
 <div class="container-fluid">
 <div class="row">
-<button>Start Animation</button>
+<button id="start" type="button" class="btn btn-primary">Start Animation</button>
 
-<p>By default, all HTML elements have a static position, and cannot be moved. To manipulate the position, remember to first set the CSS position property of the element to relative, fixed, or absolute!</p>
+
 <div id="viewport" style="display:relative;">
 
 <img id="im1" class="image" src=""/>
