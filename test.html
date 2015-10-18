@@ -6,11 +6,23 @@
     #viewport {
         //float: left;
         position: relative;
-        width:1200px;
-        height:675px;
+        //width:100%;
+        //height:500px;
         margin:0 auto;
         overflow: hidden;
-        border: solid;
+        //border: solid;
+    }
+    .info {
+        font-family: "Open Sans", sans-serif;
+        font-size: 110%;
+        line-height: 1.35em;
+        color: #3a3a3a;
+        background-color: #eeeeee;
+        border-color: #888888;
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid;
+        border-radius: 4px;
     }
     .zone {
         left:40px;
@@ -29,13 +41,15 @@
     }
     .image {
         margin:0px;
-        position:absolute;
+        //position:absolute;
+        display: block;
         width:100%;
+        //max-height:100%;
     }
     .cursor {
-        position:absolute;
-        left:450px;
-        top: 350px;
+        position:relative;
+        left:100px;
+        top: 100px;
         width:20px;
     }
     @-webkit-keyframes blink {
@@ -73,47 +87,76 @@
 <script src="js/velocity.min.js"></script>
 <script src="js/velocity.ui.js"></script>
 <script src="js/bootstrap.min.js"></script>
+<script src="js/showdown.min.js"></script>
 <script src="data.js"></script>
 <script> 
-$(document).ready(function(){
-    
-    //$.getJSON( "test.json", function( data ) {
-    //    sce = data;
-    //});
-    var clickcircle = 50;
-    var step = 0;
-    var substep = 0;
-    var zoom;
-    var viewport_w = 1200;
-    var viewport_h = 675;
-    var viewport = document.getElementById('viewport');
-    var viewport_w = viewport.clientWidth;
-    var viewport_h = viewport.clientHeight;
-    var cursor_x = 450;
-    var cursor_y = 350;
-    var im_w = 1920;
-    var im_h = 1080;
-    var current;
-    var im_x;
-    var im_y;
-    var viewport_x = cursor_x;
-    var viewport_x0;
-    var viewport_y = cursor_y;
-    var viewport_y0;
-    var tx;
-    var ty;
-    var zoomActive=false;
-    var play=false;
+var converter = new showdown.Converter();
+var clickcircle = 50;
+var step = 0;
+var substep = 0;
+var zoom;
+var cursor_x = 450;
+var cursor_y = 350;
+var current;
+var mySequence;
+var zoomActive=false;
+var play=false;
+var delay = 0;
+var viewport;
+var viewport_w;
+var viewport_h;
+var im_w;
+var im_h;
+var tx;
+var ty;
+var viewport_x = cursor_x;
+var viewport_x0;
+var viewport_y = cursor_y;
+var viewport_y0;
 
-    $("#im1").attr('src',sce['image']);
-    $("#start").click(function(){
-        play=true;
-        go();
-    });    
-    $('next').click(function() {
-    });
-   function go() {
+function initViewport() {
+        im_w = document.getElementById('im1').naturalWidth;
+        im_h = document.getElementById('im1').naturalHeight;
+        viewport = document.getElementById('viewport');
+        if (viewport.clientWidth != viewport_w) {
+            viewport_w = viewport.clientWidth;
+            viewport_h = viewport.clientHeight;
+        }
+        $('#viewport').css('height',viewport_h);
+        console.log('viewport_w='+viewport_w+', viewport_h='+viewport_h);
 
+    }
+   function loadSequence() {
+       mySequence = [];
+       for (j=0;j<sce.steps.length;j++) {
+           var seq = sce.steps[j];
+           for (i=0;i<seq.length;i++) {
+               s = seq[i];
+               if ((s.action === 'stepStart') || (s.action === 'showImage') || (s.action === 'stepEnd')) {
+                   changeImage(s.image,300);
+               }
+               if (s.action === 'click') {
+                   zoomWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
+                   moveCursor(s.x,s.y,1500);
+                   startClick(s.button,s.count,true,150);
+               }
+               if (s.action === 'zoomTo') {
+                   console.log('zoom');
+                   zoomWindow(s.zone.x,s.zone.y,s.zone.w,s.zone.h,1000);
+               }
+               if (s.action === 'text') {
+                  changeText(s.content,s.type,300);
+               }
+               if (s.action === 'wait') {
+                  delay = s.time;
+               }
+               if (s.wait) delay = s.wait;
+
+           }
+       }
+       zoomWindow(0,0,im_w,im_h,1000);
+
+   }
        function showImage(image) {
            console.log('showImage '+image);
            $("#im1").attr('src',image);
@@ -144,7 +187,7 @@ $(document).ready(function(){
            } else {
                zoom = z;
            }
-
+            
            tx = viewport_w*(zoom-1)/2-viewport_x*(zoom-1); 
            ty = viewport_h*(zoom-1)/2-viewport_y*(zoom-1);
        }
@@ -156,9 +199,11 @@ $(document).ready(function(){
             queue = false;
            }
            updateZoom(z);
-           mySequence.push({ e: $('#im1'), p: {scale:zoom, left: tx+"px",top:ty+"px"}, options: { duration: speed,  sequenceQueue: queue, easing:'easeInSine' } });
+           mySequence.push({ e: $('#im1'), p: {scale:zoom, left: tx+"px",top:ty+"px"}, options: { delay:delay, duration: speed,  sequenceQueue: queue, easing:'easeInSine' } });
         }
        function zoomWindow(x,y,w,h,speed,queue) {
+         console.log('viewport_w='+viewport_w+', viewport_h='+viewport_h);
+
          if (speed == undefined) {
             speed=1500;
            }
@@ -193,14 +238,19 @@ $(document).ready(function(){
          }
          
          // Pour centrer la fenetre
-         cw = (viewport_w - vw * z) /2 - vx*z
+         tx0 = viewport_w * (z-1) / 2;
+         ty0 = viewport_h * (z-1) / 2;
+         cw = (viewport_w - vw * z) /2 - vx*z;
          if (cw>0) cw=0;
-         ch = (viewport_h - vh * z) /2 - vy*z
+         if (cw<-2*tx0) cw = -2*tx0;
+         ch = (viewport_h - vh * z) /2 - vy*z;
          if (ch>0) ch=0;
          console.log('cw='+cw+', ch='+ch);
-         
-         var _tx = viewport_w * (z-1) / 2 + cw; 
-         var _ty = viewport_h * (z-1) / 2 + ch;
+       
+         var _tx = tx0 + cw; 
+
+         var _ty = ty0 + ch;
+
          if ((_tx != tx) && (_ty != ty) && ( z != zoom)) {
              tx = _tx;
              ty = _ty;
@@ -211,7 +261,9 @@ $(document).ready(function(){
              console.log("viewport_x0="+viewport_x0+", viewport_y0="+viewport_y0);
              console.log("z="+z);
              console.log("tx="+tx+", ty="+ty);
-             mySequence.push({ e: $('#im1'), p: {scale:zoom, left: tx+"px",top:ty+"px"}, options: { duration: speed,  easing:'easeInSine' } });
+             
+             mySequence.push({ e: $('#im1'), p: {scale:zoom, marginLeft: tx+"px",marginTop:ty+"px"}, options: { delay:delay, duration: speed,  easing:'easeInSine' } });
+             delay = 0;
          }
 
        }
@@ -220,9 +272,32 @@ $(document).ready(function(){
             speed=50;
            }
            console.log('viewport_x='+viewport_x+', viewport_y='+viewport_y);
-           mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showImageCallback(image) } });
-       
+           mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { delay:delay, duration: speed, easing:'easeOutQuart', complete: showImageCallback(image) } });
+           delay = 0;
        }
+       function showText(text) {
+            $('#info').velocity({ opacity: 0 }, { duration:750, complete: function () {
+            $('#info').html(text); }})
+            .velocity("transition.slideUpIn", { 
+                display: null,
+                duration: 1250,
+                stagger: 40
+               
+            });
+       }
+       function showTextCallback(text) {
+           return function() { showText(text);};
+       }
+       function changeText(content,type,speed) {
+           if (speed == undefined) {
+            speed=50;
+           }
+           if (type === 'markdown') content = converter.makeHtml(content);
+           
+           mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showTextCallback(content) } });
+       }
+       
+       
        function moveCursor(nx,ny,speed,complete) {
            if (speed == undefined) {
             speed=1500;
@@ -231,10 +306,11 @@ $(document).ready(function(){
            if (nx != 0 || ny != 0) {
                console.log('udateCursor '+nx+','+ny);
                updateCursor(nx,ny);
-               mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: complete } });
-               mySequence.push({e: $('.click'), p:{left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { duration:0, sequenceQueue: true }});
+               mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { delay:delay, duration: speed, easing:'easeOutQuart', complete: complete } });
+               mySequence.push({e: $('.click'), p:{left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { delay:delay, duration:0, sequenceQueue: true }});
 
            }
+           delay = 0;
        }
        function startClick(btn,repeat,full,speed) {
            if (speed == undefined) {
@@ -253,12 +329,13 @@ $(document).ready(function(){
            }
            console.log(color);
            for (r=0;r<repeat;r++) {
-               mySequence.push({e: $('.click'), p:{ left:(viewport_x-clickcircle/2)+'px',top:(viewport_y-clickcircle/2)+'px',width:(clickcircle)+'px',height:(clickcircle)+'px'}, options: { duration:0, complete: function () { $('.click').css('border-color',color).css('visibility','visible');} }});
+               mySequence.push({e: $('.click'), p:{ left:(viewport_x-clickcircle/2)+'px',top:(viewport_y-clickcircle/2)+'px',width:(clickcircle)+'px',height:(clickcircle)+'px'}, options: { delay:delay, duration:0, complete: function () { $('.click').css('border-color',color).css('visibility','visible');} }});
                mySequence.push({ e: $('.click'), p: {left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { duration: speed/repeat}});
            }
            if (full) {
                mySequence.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed/repeat, complete: function () { $('.click').css('visibility','hidden');}}});
            }
+           delay = 0;
 
        }
        
@@ -269,27 +346,31 @@ $(document).ready(function(){
            mySequence.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed, complete: function () { $('.click').css('visibility','hidden');}}});
        }
        
-       //updateVars();
-       var mySequence = [];
-       for (j=0;j<sce.steps.length;j++) {
-           var seq = sce.steps[j];
-           for (i=0;i<seq.length;i++) {
-               s = seq[i];
-               if ((s.action === 'stepStart') || (s.action === 'showImage') || (s.action === 'stepEnd')) {
-                   changeImage(s.image,300);
-               }
-               if (s.action === 'click') {
-                   zoomWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
-                   moveCursor(s.x,s.y,1500);
-                   startClick(s.button,s.count,true,150);
-               }
-
-           }
-       }
-       zoomWindow(0,0,im_w,im_h,1000);
-       $.Velocity.RunSequence(mySequence);
-
+$(document).ready(function(){
+    
+    //$.getJSON( "test.json", function( data ) {
+    //    sce = data;
+    //});
+    $("#im1").attr('src',sce['image']);
+    $("#start").click(function(){
+        play=true;
+        go();
+    });    
+    $('next').click(function() {
+    });
+   
+   
+   $( window ).resize(function() {
+       
+        location.reload();
+    }); 
+   function go() {
+          loadSequence();     
+          $.Velocity.RunSequence(mySequence);
    }
+
+       
+       
    $(function () {
   $('[data-toggle="popover"]').popover()
   })
@@ -297,44 +378,29 @@ $(document).ready(function(){
 </script> 
 </head>
 <body>
-<div class="container-fluid">
-<div class="row">
+<div class="container">
 <button id="start" type="button" class="btn btn-primary">Start Animation</button>
-
-
-<div id="viewport" style="display:relative;">
-
-<img id="im1" class="image" src=""/>
-<div class="click"></div>
-<div class="zonenone"  data-toggle="popover" title="Popover title" data-content="And here's some amazing content. It's very engaging. Right?"></div>
-<img class="cursor" src="cursor.png"/>
-
-</div>
-</div>
-<!-- Button trigger modal -->
-<button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#myModal">
-  Launch demo modal
-</button>
-</div>
-<!-- Modal -->
-<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title" id="myModalLabel">Modal title</h4>
-      </div>
-      <div class="modal-body">
-        ...
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary">Save changes</button>
-      </div>
+<div class="row">
+    <div class="col-md-12">
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <div id="viewport">
+                <img id="im1" class="image" onload="initViewport();"/>
+                <div style="left:0; top:0; position: absolute;">
+            		<div class="click"></div>
+            		<img class="cursor" src="cursor.png"/>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
+    </div>
+<div class="col-md-12">
+<div class="info" id="info" style="opacity:0;"></div>
+ 
 </div>
-<button type="button" class="btn btn-lg btn-danger" data-toggle="popover" title="Popover title" data-content="And here's some amazing content. It's very engaging. Right?">Click to toggle popover</button>
+
+</div>
+</div>
 </body>
 </html>
 
