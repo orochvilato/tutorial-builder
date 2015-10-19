@@ -94,7 +94,7 @@ var converter = new showdown.Converter();
 var clickcircle = 50;
 var step = 0;
 var substep = 0;
-var zoom;
+var zoom = 1;
 var cursor_x = 450;
 var cursor_y = 350;
 var current;
@@ -110,9 +110,9 @@ var im_h;
 var tx;
 var ty;
 var viewport_x = cursor_x;
-var viewport_x0;
+var viewport_x0=0;
 var viewport_y = cursor_y;
-var viewport_y0;
+var viewport_y0=0;
 
 function initViewport() {
         im_w = document.getElementById('im1').naturalWidth;
@@ -121,8 +121,14 @@ function initViewport() {
         if (viewport.clientWidth != viewport_w) {
             viewport_w = viewport.clientWidth;
             viewport_h = viewport.clientHeight;
+            $('#mask').attr('width',viewport_w).attr('height',viewport_h);
+            $('#leftmask').attr('x',0).attr('y',0).attr('width',0).attr('height',viewport_h);
+            $('#rightmask').attr('x',viewport_w).attr('y',0).attr('width',0).attr('height',viewport_h);
+            $('#topmask').attr('x',0).attr('y',0).attr('width',viewport_w).attr('height',0);
+            $('#bottommask').attr('x',0).attr('y',viewport_h).attr('width',viewport_w).attr('height',0);            
         }
         $('#viewport').css('height',viewport_h);
+        
         console.log('viewport_w='+viewport_w+', viewport_h='+viewport_h);
 
     }
@@ -136,6 +142,7 @@ function initViewport() {
                    changeImage(s.image,300);
                }
                if (s.action === 'click') {
+                   maskWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
                    zoomWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
                    moveCursor(s.x,s.y,1500);
                    startClick(s.button,s.count,true,150);
@@ -201,19 +208,49 @@ function initViewport() {
            updateZoom(z);
            mySequence.push({ e: $('#im1'), p: {scale:zoom, left: tx+"px",top:ty+"px"}, options: { delay:delay, duration: speed,  sequenceQueue: queue, easing:'easeInSine' } });
         }
-       function zoomWindow(x,y,w,h,speed,queue) {
-         console.log('viewport_w='+viewport_w+', viewport_h='+viewport_h);
+       function maskWindow(x,y,w,h,speed,queue) {
+           if (speed == undefined) {
+            speed=15000;
+           }
+           if (queue == undefined) {
+            queue = true;
+           }
+           v_x = (x /im_w) * viewport_w*zoom - viewport_x0;
+           v_y = (y /im_h) * viewport_h*zoom - viewport_y0;
+           v_w = (w / im_w) * viewport_w*zoom;
+           v_h = (h / im_h) * viewport_h*zoom;         
+          
+           lm_w = v_x;
+           if (lm_w<0) lm_w=0;
+           rm_w = viewport_w-v_x-v_w;
+           if (rm_w<0) rm_w=0;
+           rm_x = v_x+v_w;
+           if (rm_x<0) rm_x=0;
+           tm_h = v_y;
+           if (tm_h<0) tm_h=0;
+           bm_h = viewport_h-v_y-v_h;
+           if (bm_h<0) bm_h=0;
+           bm_y = v_y+v_h;
+           if (bm_y<0) bm_y=0;
+            
+           mySequence.push({ e: $('#leftmask'), p: {width: lm_w}, options: { sequenceQueue: queue, delay:delay, duration: speed,  easing:'easeInSine' } });
+           mySequence.push({ e: $('#rightmask'), p: {width: rm_w,x:rm_x}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           mySequence.push({ e: $('#topmask'), p: {height: tm_h}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           mySequence.push({ e: $('#bottommask'), p: {height: bm_h,y:bm_y}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
 
+       }       
+       function zoomWindow(_x,_y,_w,_h,speed,queue) {
+         console.log('viewport_w='+viewport_w+', viewport_h='+viewport_h);
          if (speed == undefined) {
             speed=1500;
            }
            if (queue == undefined) {
             queue = true;
            }
-         x = x - w * 0.01;
-         y = y - h * 0.01;
-         w = w * 1.02;
-         h = h * 1.02;
+         x = _x - _w * 0.01;
+         y = _y - _h * 0.01;
+         w = _w * 1.02;
+         h = _h * 1.02;
          
          console.log('x='+x+', y='+y+', w='+w+', h='+h);
          var vx = x / im_w * viewport_w;
@@ -262,7 +299,8 @@ function initViewport() {
              console.log("z="+z);
              console.log("tx="+tx+", ty="+ty);
              
-             mySequence.push({ e: $('#im1'), p: {scale:zoom, marginLeft: tx+"px",marginTop:ty+"px"}, options: { delay:delay, duration: speed,  easing:'easeInSine' } });
+             mySequence.push({ e: $('#im1'), p: {scale:zoom, marginLeft: tx+"px",marginTop:ty+"px"}, options: { delay:delay, duration: speed,  easing:'easeInSine',sequenceQueue:queue } });
+             maskWindow(_x,_y,_w,_h,speed,false);
              delay = 0;
          }
 
@@ -386,10 +424,17 @@ $(document).ready(function(){
         <div class="panel-body">
             <div id="viewport">
                 <img id="im1" class="image" onload="initViewport();"/>
+                <svg id="mask" style="left:0;top:0;opacity:0.4; position: absolute;">
+                <rect id="leftmask" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="rightmask" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="topmask" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="bottommask" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                </svg>
                 <div style="left:0; top:0; position: absolute;">
             		<div class="click"></div>
             		<img class="cursor" src="cursor.png"/>
                 </div>
+
             </div>
         </div>
     </div>
