@@ -98,7 +98,9 @@ var zoom = 1;
 var cursor_x = 450;
 var cursor_y = 350;
 var current;
+var currentStep=0;
 var mySequence;
+var mySteps;
 var zoomActive=false;
 var play=false;
 var delay = 0;
@@ -113,6 +115,20 @@ var viewport_x = cursor_x;
 var viewport_x0=0;
 var viewport_y = cursor_y;
 var viewport_y0=0;
+var lm_w;
+var rm_w;
+var rm_x;
+var tm_h;
+var bm_h;
+var bm_y;     
+var zoom_x;
+var zoom_y;
+var zoom_h;
+var zoom_w;
+var mask_x;
+var mask_y;
+var mask_h;
+var mask_w;
 
 function initViewport() {
         im_w = document.getElementById('im1').naturalWidth;
@@ -132,121 +148,104 @@ function initViewport() {
         console.log('viewport_w='+viewport_w+', viewport_h='+viewport_h);
 
     }
-   function loadSequence() {
+function initStep(step) {
+    s = mySteps[step];
+    $('#im1').attr('src',s.image);
+    initViewport();
+    updateZoom(s.zoom.x,s.zoom.y,s.zoom.w,s.zoom.h);
+    updateMask(s.mask.x,s.mask.y,s.mask.w,s.mask.h);
+    $('#im1').css('scale',zoom).css('marginLeft',tx+'px').css('marginTop',ty+"px");
+}
+function loadSequence() {
        mySequence = [];
-       for (j=0;j<sce.steps.length;j++) {
-           var seq = sce.steps[j];
-           for (i=0;i<seq.length;i++) {
-               s = seq[i];
-               if ((s.action === 'stepStart') || (s.action === 'showImage') || (s.action === 'stepEnd')) {
-                   changeImage(s.image,300);
-               }
-               if (s.action === 'click') {
-                   maskWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
-                   zoomWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
-                   moveCursor(s.x,s.y,1500);
-                   startClick(s.button,s.count,true,150);
-               }
-               if (s.action === 'zoomTo') {
-                   console.log('zoom');
-                   zoomWindow(s.zone.x,s.zone.y,s.zone.w,s.zone.h,1000);
-               }
-               if (s.action === 'text') {
-                  changeText(s,300);
-               }
-               if (s.action === 'wait') {
-                  delay = s.time;
-               }
-               if (s.wait) delay = s.wait;
-
+       mySteps = [];
+       for (i=0;i<sce.steps.length;i++) {
+           s = sce.steps[i];
+           if (s.action === 'loadImage' || s.action === 'stop') {
+               changeImage(s.image,300);
+           }
+           if (s.action === 'click') {
+               maskWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
+               zoomWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
+               moveCursor(s.x,s.y,1500);
+               startClick(s.button,s.count,true,150);
+           }
+           if (s.action === 'zoomTo') {
+               console.log('zoom');
+               zoomWindow(s.zone.x,s.zone.y,s.zone.w,s.zone.h,1000);
+           }
+           if (s.action === 'text') {
+               changeText(s,300);
+           }
+           if (s.action === 'wait') {
+               delay = s.time;
+           }
+           if (s.wait) delay = s.wait;
+           if (s.action === 'stop') {
+               mySteps.push({'i':i, 'image':s.image, 'zoom':{'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h},
+                             'mask': {'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h} });
            }
        }
        zoomWindow(0,0,im_w,im_h,1000);
 
    }
-       function showImage(image) {
+   function showImage(image) {
            console.log('showImage '+image);
            $("#im1").attr('src',image);
        }
-       function showImageCallback(image) {
+   function showImageCallback(image) {
             console.log('showImageCallback '+image);
             return function() { showImage(image);};
        }
-       function updateVars() {
-           current = sce[step];
-           im_x = current['mousex'];
-           im_y = current['mousey'];
-           if (im_x != 0 || im.y != 0)  {
-               updateCursor(im_x,im_y);            
-           }
-           updateZoom();
-       }
-       function updateCursor(x,y) {
+   function updateCursor(x,y) {
            im_x = x;
            im_y = y;
            viewport_x = (x /im_w) * viewport_w*zoom - viewport_x0;
            viewport_y = (y /im_h) * viewport_h*zoom - viewport_y0;
-       }
+   }
        
-       function updateZoom(z) {
-           if (z == undefined) {
-               zoom = 1.5;
-           } else {
-               zoom = z;
-           }
-            
-           tx = viewport_w*(zoom-1)/2-viewport_x*(zoom-1); 
-           ty = viewport_h*(zoom-1)/2-viewport_y*(zoom-1);
-       }
-       function zoomImage(z,speed,queue) {
-           if (speed == undefined) {
-            speed=1500;
-           }
-           if (queue == undefined) {
-            queue = false;
-           }
-           updateZoom(z);
-           mySequence.push({ e: $('#im1'), p: {scale:zoom, left: tx+"px",top:ty+"px"}, options: { delay:delay, duration: speed,  sequenceQueue: queue, easing:'easeInSine' } });
-        }
-       function maskWindow(x,y,w,h,speed,queue) {
+   function updateMask(x,y,w,h) {
+       mask_x = x;
+       mask_y = y;
+       mask_w = w;
+       mask_h = h;
+       v_x = (x /im_w) * viewport_w*zoom - viewport_x0;
+       v_y = (y /im_h) * viewport_h*zoom - viewport_y0;
+       v_w = (w / im_w) * viewport_w*zoom;
+       v_h = (h / im_h) * viewport_h*zoom;         
+    
+       lm_w = v_x;
+       if (lm_w<0) lm_w=0;
+       rm_w = viewport_w-v_x-v_w;
+       if (rm_w<0) rm_w=0;
+       rm_x = v_x+v_w;
+       if (rm_x<0) rm_x=0;
+       tm_h = v_y;
+       if (tm_h<0) tm_h=0;
+       bm_h = viewport_h-v_y-v_h;
+       if (bm_h<0) bm_h=0;
+       bm_y = v_y+v_h;
+       if (bm_y<0) bm_y=0;
+   }
+   function maskWindow(x,y,w,h,speed,queue) {
            if (speed == undefined) {
             speed=15000;
            }
            if (queue == undefined) {
             queue = true;
            }
-           v_x = (x /im_w) * viewport_w*zoom - viewport_x0;
-           v_y = (y /im_h) * viewport_h*zoom - viewport_y0;
-           v_w = (w / im_w) * viewport_w*zoom;
-           v_h = (h / im_h) * viewport_h*zoom;         
-          
-           lm_w = v_x;
-           if (lm_w<0) lm_w=0;
-           rm_w = viewport_w-v_x-v_w;
-           if (rm_w<0) rm_w=0;
-           rm_x = v_x+v_w;
-           if (rm_x<0) rm_x=0;
-           tm_h = v_y;
-           if (tm_h<0) tm_h=0;
-           bm_h = viewport_h-v_y-v_h;
-           if (bm_h<0) bm_h=0;
-           bm_y = v_y+v_h;
-           if (bm_y<0) bm_y=0;
-            
+           updateMask(x,y,w,h);
            mySequence.push({ e: $('#leftmask'), p: {width: lm_w}, options: { sequenceQueue: queue, delay:delay, duration: speed,  easing:'easeInSine' } });
            mySequence.push({ e: $('#rightmask'), p: {width: rm_w,x:rm_x}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
            mySequence.push({ e: $('#topmask'), p: {height: tm_h}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
            mySequence.push({ e: $('#bottommask'), p: {height: bm_h,y:bm_y}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
 
-       }       
-       function zoomWindow(_x,_y,_w,_h,speed,queue) {
-         console.log('viewport_w='+viewport_w+', viewport_h='+viewport_h);
-         if (speed == undefined) {
-            speed=1500;
-           }
-           if (queue == undefined) {
-            queue = true;
-           }
+       }
+       function updateZoom(_x,_y,_w,_h) {
+         zoom_x = _x;
+         zoom_y = _y;
+         zoom_w = _w;
+         zoom_h = _h;
          x = _x - _w * 0.01;
          y = _y - _h * 0.01;
          w = _w * 1.02;
@@ -287,20 +286,28 @@ function initViewport() {
          var _tx = tx0 + cw; 
 
          var _ty = ty0 + ch;
-
-         if ((_tx != tx) && (_ty != ty) && ( z != zoom)) {
-             tx = _tx;
-             ty = _ty;
-             zoom = z;
+         tx = _tx;
+         ty = _ty;
+         zoom = z;
          
-             viewport_x0 = -cw;
-             viewport_y0 = -ch;
-             console.log("viewport_x0="+viewport_x0+", viewport_y0="+viewport_y0);
-             console.log("z="+z);
-             console.log("tx="+tx+", ty="+ty);
-             
+         viewport_x0 = -cw;
+         viewport_y0 = -ch;
+       
+       }
+       function zoomWindow(x,y,w,h,speed,queue) {
+         if (speed == undefined) {
+            speed=1500;
+           }
+           if (queue == undefined) {
+            queue = true;
+           }
+         last_tx = tx;
+         last_ty = ty;
+         last_zoom = zoom;
+         updateZoom(x,y,w,h)
+         if ((last_tx != tx) && (last_ty != ty) && ( last_zoom != zoom)) {
              mySequence.push({ e: $('#im1'), p: {scale:zoom, marginLeft: tx+"px",marginTop:ty+"px"}, options: { delay:delay, duration: speed,  easing:'easeInSine',sequenceQueue:queue } });
-             maskWindow(_x,_y,_w,_h,speed,false);
+             maskWindow(x,y,w,h,speed,false);
              delay = 0;
          }
 
@@ -398,7 +405,8 @@ $(document).ready(function(){
     //$.getJSON( "test.json", function( data ) {
     //    sce = data;
     //});
-    $("#im1").attr('src',sce['image']);
+    $("#im1").attr('src',sce['steps'][0]['image']);
+
     $("#start").click(function(){
         play=true;
         go();
@@ -412,8 +420,18 @@ $(document).ready(function(){
         location.reload();
     }); 
    function go() {
-          loadSequence();     
+          currentStep = 4;
+          if (mySequence == undefined) loadSequence();
+
+          var seq = [];
+          for (i = mySteps[currentStep]['i']; i<mySteps[currentStep+1]['i'];i++) {
+            seq.push(mySequence[i]);
+          }
+          console.log(seq)
+          //initStep(currentStep);
           $.Velocity.RunSequence(mySequence);
+          //$.Velocity.RunSequence(seq);
+          currentStep++;
    }
 
        

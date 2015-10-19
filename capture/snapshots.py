@@ -191,39 +191,29 @@ class Snapshot():
                     or (self.params.followActive and self.diffImage(t1['imagecrop'],t2['imagecrop'])>self.params.diffPct)
                     )
                     )
-        step = []
+        steps = []
         prevstep = []
         scenario = dict(name=self.params.title,steps=[])
         for i,tlelt in enumerate(sorttl):
-            #print i,tlelt['event'].type
             if (tlelt['event'].type!='timed'):
                 t = tlelt['timestamp']-self.starttime
                 if 'Press' in tlelt['event'].type:
-                    if step:
-                        prevstep = step
-                        scenario['steps'].append(step)
-                        step=[]
+                    steps.append(dict(action="stop",image=""))
                         
                     if compare(self.lastevt,self.last):
                         if not self.lastevt['iname'] in self.imagesnames.keys():
                             save(self.lastevt)
-                    if not scenario['steps']:
-                       scenario['image'] = self.imagesnames[self.lastevt['iname']]
-                    if prevstep:
-                        prevstep.append(dict(action='stepEnd',image=self.imagesnames[self.lastevt['iname']]))
-                    step.append(dict(action='stepStart',image=self.imagesnames[self.lastevt['iname']]))
-                    print "%03.2f loadImage %s" % (t,self.imagesnames[self.lastevt['iname']])
+                    steps[-1]['image'] = self.imagesnames[self.lastevt['iname']]
                     self.last = self.lastevt
                     
                 if 'Press' in tlelt['event'].type and count==0: 
-                    step.append(dict(action='click',
+                    steps.append(dict(action='click',
                                      button=tlelt['event'].button,
                                      x=tlelt['event'].x,
                                      y=tlelt['event'].y,
                                      count=tlelt['event'].count,
                                      active=tlelt['active'],
                                      zoom=1))
-                    print "%03.2f %s %d" % (t,tlelt['event'].button,tlelt['event'].count)
                     count = tlelt['event'].count
                 if 'Release' in tlelt['event'].type:
                     count -= 1
@@ -231,28 +221,17 @@ class Snapshot():
                 if compare(tlelt,self.last):
                     if not tlelt['iname'] in self.imagesnames.keys():
                         save(tlelt)
-                    print "%03.2f loadImage %s" % (t,self.imagesnames[tlelt['iname']])
-                    step.append(dict(action='loadImage',image=self.imagesnames[tlelt['iname']]))
+                    steps.append(dict(action='loadImage',image=self.imagesnames[tlelt['iname']]))
 
                     self.last = tlelt
-                self.scenario.append(dict(sequence=self.seq,
-                                  i=i,
-                                  zoom=1,
-                                  type=tlelt['event'].type,
-                                  time=tlelt['timestamp']-self.starttime,
-                                  mousex=tlelt['event'].x,
-                                  mousey=tlelt['event'].y,
-                                  mousebtn=tlelt['event'].button if hasattr(tlelt['event'],'button') else 0,
-                                  btnccount=tlelt['event'].count if hasattr(tlelt['event'],'count') else 0,
-                                  activewindow=tlelt['active']))
+                
             self.lastevt = tlelt
 
         if compare(self.last,self.lastevt):
             save(self.lastevt)
-            step.append(dict(action='stepEnd',image=self.imagesnames[self.lastevt['iname']]))
+            steps.append(dict(action='stop',image=self.imagesnames[self.lastevt['iname']]))
 
-            print "%03.2f loadImage %s" % (self.lastevt['timestamp']-self.starttime,self.imagesnames[self.lastevt['iname']])
-        scenario['steps'].append(step)
+        scenario['steps'] = steps
         import json
         js = "var sce=%s;" % json.dumps(scenario,sort_keys=True, indent=4, separators=(',', ': '))
         with open("data.js",'w') as f:
