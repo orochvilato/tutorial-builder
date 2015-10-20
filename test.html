@@ -83,6 +83,7 @@
     }
 </style>
 <link href="css/bootstrap.min.css" rel="stylesheet">
+<link href="css/font-awesome.min.css" rel="stylesheet">
 <script src="js/jquery-1.11.3.min.js"></script>
 <script src="js/velocity.min.js"></script>
 <script src="js/velocity.ui.js"></script>
@@ -98,14 +99,14 @@ var zoom = 1;
 var cursor_x = 450;
 var cursor_y = 350;
 var current;
-var currentStep=0;
+var currentStep;
 var mySequence;
-var newSequence;
+var newSequence = [];
 var fullSequence;
 var Seq;
 var mySteps;
 var zoomActive=false;
-var play=false;
+var playon=false;
 var delay = 0;
 var viewport;
 var viewport_w;
@@ -132,8 +133,11 @@ var mask_x;
 var mask_y;
 var mask_h;
 var mask_w;
+var mouse_x;
+var mouse_y;
 
 function initViewport() {
+        
         im_w = document.getElementById('im1').naturalWidth;
         im_h = document.getElementById('im1').naturalHeight;
         viewport = document.getElementById('viewport');
@@ -154,36 +158,59 @@ function initViewport() {
             mask_y = 0;
             mask_w = im_w;
             mask_h = im_h;
+            mouse_x = cursor_x;
+            mouse_y = cursor_y;
             zoom = 1;
-
-                   
         }
         $('#viewport').css('height',viewport_h);
+        if (fullSequence == undefined) {
+            loadSequence();
+            currentStep = 0;
+        }
         
         console.log('viewport_w='+viewport_w+', viewport_h='+viewport_h);
 
     }
 function initStep(step) {
-    newSequence = [];
     s = mySteps[step];
     if (s.image != $('#im1').attr('src')) changeImage(newSequence,s.image,0);
-    console.log(s.mask.x+","+s.mask.y+","+s.mask.w+","+s.mask.h);
-    console.log(mask_x+","+mask_y+","+mask_w+","+mask_h);
-    console.log(s.zoom.x+","+s.zoom.y+","+s.zoom.w+","+s.zoom.h);
-    console.log(zoom_x+","+zoom_y+","+zoom_w+","+zoom_h);
-    if (s.zoom.x != zoom_x || s.zoom.x != zoom_y || s.zoom.w != zoom_w || s.zoom.h != zoom_h)
+    if (s.zoom && (s.zoom.x != zoom_x || s.zoom.x != zoom_y || s.zoom.w != zoom_w || s.zoom.h != zoom_h))
         zoomWindow(newSequence,s.zoom.x,s.zoom.y,s.zoom.w,s.zoom.h,0);
-    if (s.mask.x != mask_x || s.mask.y != mask_y || s.mask.w != mask_w || s.mask.h != mask_h)
+    if (s.mask && (s.mask.x != mask_x || s.mask.y != mask_y || s.mask.w != mask_w || s.mask.h != mask_h))
         maskWindow(newSequence,s.mask.x,s.mask.y,s.mask.w,s.mask.h,0);
+    if (s.mouse && (s.mouse.x != mouse_x || s.mouse.y != mouse_y))
+        console.log('mouse : '+s.mouse.x+", "+s.mouse.y);
+        moveCursor(newSequence,s.mouse.x,s.mouse.y,0);
+    if (s.title)
+        addStepTitle(newSequence,s.title);
+
+}
+function setStep(seq,value) {
+    console.log('value='+value);
+    seq.push({ e: $('#step'), p:{opacity:1}, options:{ duration:0, complete: function () {
+           currentStep = value;
+           console.log("currentStep :"+currentStep);
+    }}});
 
 }
 function loadSequence() {
        fullSequence = [];
        mySteps = [];
+       currentStep = 0;
        for (i=0;i<sce.steps.length;i++) {
            s = sce.steps[i];
            if (s.action === 'stop') {
-               myStep = {'i':fullSequence.length, 'image':s.image};
+               if (s.title) {
+                   var title = s.title;
+               } else {
+                   var title = "Step "+(mySteps.length+1);
+               }
+
+               setStep(fullSequence, currentStep + 1);
+               currentStep++;
+               
+               myStep = {'i':fullSequence.length, 'image':s.image,'title':title};
+               addStepTitle(fullSequence,title);
            }
 
            if (s.action === 'loadImage' || s.action === 'stop') {
@@ -208,11 +235,17 @@ function loadSequence() {
            if (s.action === 'stop') {
                myStep['zoom']={'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h};
                myStep['mask']={'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h};
+               myStep['mouse'] = {'x':mouse_x,'y':mouse_y};
                mySteps.push(myStep);
            }
            if (s.wait) delay = s.wait;
        }
        zoomWindow(fullSequence,0,0,im_w,im_h,1000);
+       setStep(fullSequence,0);
+       //mySteps[mySteps.length-1]['i'] = fullSequence.length-1;
+       //mySteps[mySteps.length-1]['zoom']={'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h};
+       //mySteps[mySteps.length-1]['mask']={'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h};
+
    }
    function showImage(image) {
            console.log('showImage '+image);
@@ -381,10 +414,12 @@ function loadSequence() {
            if (speed == undefined) {
             speed=1500;
            }
-           
+           mouse_x = nx;
+           mouse_y = ny;
            if (nx != 0 || ny != 0) {
                console.log('udateCursor '+nx+','+ny);
                updateCursor(nx,ny);
+               
                seq.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { delay:delay, duration: speed, easing:'easeOutQuart', complete: complete } });
                seq.push({e: $('.click'), p:{left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { delay:delay, duration:0, sequenceQueue: true }});
 
@@ -424,36 +459,84 @@ function loadSequence() {
            }
            seq.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed, complete: function () { $('.click').css('visibility','hidden');}}});
        }
-       
+      function addStepTitle(seq,title,speed) {
+       if (speed == undefined) speed = 500;
+       seq.push({ e: $('#step'), p: 'transition.slideUpOut', options:{ duration:500, complete: function () {
+                   $('#step').html(title); }}});
+       seq.push({ e: $('#step'), p: 'transition.slideUpIn',options: { duration: speed }});
+   }
+
+
 $(document).ready(function(){
     
     //$.getJSON( "test.json", function( data ) {
     //    sce = data;
     //});
     $("#im1").attr('src',sce['steps'][0]['image']);
-
-    $("#start").click(function(){
-        play=true;
-        go();
-    });    
-    $('next').click(function() {
+   
+    $("#play").click(function(){
+        play();
+    });   
+    $('#start').click(function() {
+        jumpStep(0);
+    });
+    $('#next').click(function() {
+        jumpStep(currentStep+1);
+    });
+    $('#previous').click(function() {
+        jumpStep(currentStep-1);
     });
    
    
    $( window ).resize(function() {
        
         location.reload();
-    }); 
-   function go() {
-          if (fullSequence == undefined) loadSequence();
-          initStep(currentStep);
-          console.log(mySteps[currentStep]['i']+', '+mySteps[currentStep+1]['i']);
-          for (i = mySteps[currentStep]['i']; i<mySteps[currentStep+1]['i'];i++) {
-            newSequence.push(fullSequence[i]);
-          }
-          //$.Velocity.RunSequence(fullSequence);
-          $.Velocity.RunSequence(newSequence);
-          currentStep++;
+    });
+   
+   function jumpStep(step,force) {
+       $('#leftmask').velocity('stop');
+       $('#rightmask').velocity('stop');
+       $('#topmask').velocity('stop');
+       $('#bottommask').velocity('stop');
+       $('#im1').velocity('stop');
+       $('.cursor').velocity('stop');
+       $('#step').velocity('stop');
+       $('.click').velocity('stop');
+       $('#info').velocity('stop');
+       
+       playon = false;
+       if (force == undefined) {
+           force = false;
+       }
+       if (force || (step<mySteps.length && step>=0 && step != currentStep)) {
+               newSequence = [];
+               currentStep = step;
+               initStep(step);
+               $.Velocity.RunSequence(newSequence);
+       }
+   } 
+   function play() {
+       if (playon == true) {
+          jumpStep(currentStep,true);
+          return
+       }
+       playon = true;
+       newSequence = [];
+       
+       start = mySteps[currentStep]['i'];
+       if (currentStep == mySteps.length-1) {
+           var end = fullSequence.length;
+       } else {
+           var end = mySteps[currentStep+1]['i'];
+       }
+       var end = fullSequence.length;
+
+       for (i = start; i<end;i++) {
+           newSequence.push(fullSequence[i]);
+       }
+       
+       $.Velocity.RunSequence(newSequence);
+      
    }
 
        
@@ -466,22 +549,33 @@ $(document).ready(function(){
 </head>
 <body>
 <div class="container">
-<button id="start" type="button" class="btn btn-primary">Start Animation</button>
+<div class="row">
+<div class="col-md-12">
+
+<div class="btn-group" style="display:block;">
+<button id="start" type="button" class="btn btn-primary"><i class="fa fa-fast-backward"></i></button>
+<button id="previous" type="button" class="btn btn-primary"><i class="fa fa-step-backward"></i></button>
+<button id="play" type="button" class="btn btn-primary"><i class="fa fa-play"></i></button>
+<button id="next" type="button" class="btn btn-primary"><i class="fa fa-step-forward"></i></button>
+</div>
+<div style="text-align:center;display:block;"><span id="step" class="anim" style="font-size:150%;"></span></div>
+</div>
+</div>
 <div class="row">
     <div class="col-md-12">
     <div class="panel panel-default">
         <div class="panel-body">
             <div id="viewport">
-                <img id="im1" class="image" onload="initViewport();"/>
+                <img id="im1" class="image anim" onload="initViewport();"/>
                 <svg id="mask" style="left:0;top:0;opacity:0.8; position: absolute;">
-                <rect id="leftmask" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                <rect id="rightmask" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                <rect id="topmask" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                <rect id="bottommask" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="leftmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="rightmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="topmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="bottommask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
                 </svg>
                 <div style="left:0; top:0; position: absolute;">
-            		<div class="click"></div>
-            		<img class="cursor" src="cursor.png"/>
+            		<div class="click" class="anim"></div>
+            		<img class="cursor"  class="anim" src="cursor.png"/>
                 </div>
 
             </div>
