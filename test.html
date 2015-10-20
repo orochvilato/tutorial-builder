@@ -100,6 +100,9 @@ var cursor_y = 350;
 var current;
 var currentStep=0;
 var mySequence;
+var newSequence;
+var fullSequence;
+var Seq;
 var mySteps;
 var zoomActive=false;
 var play=false;
@@ -141,7 +144,19 @@ function initViewport() {
             $('#leftmask').attr('x',0).attr('y',0).attr('width',0).attr('height',viewport_h);
             $('#rightmask').attr('x',viewport_w).attr('y',0).attr('width',0).attr('height',viewport_h);
             $('#topmask').attr('x',0).attr('y',0).attr('width',viewport_w).attr('height',0);
-            $('#bottommask').attr('x',0).attr('y',viewport_h).attr('width',viewport_w).attr('height',0);            
+            $('#bottommask').attr('x',0).attr('y',viewport_h).attr('width',viewport_w).attr('height',0);
+            zoom = 1;
+            zoom_x = 0;
+            zoom_y = 0;
+            zoom_w = im_w;
+            zoom_h = im_h;
+            mask_x = 0;
+            mask_y = 0;
+            mask_w = im_w;
+            mask_h = im_h;
+            zoom = 1;
+
+                   
         }
         $('#viewport').css('height',viewport_h);
         
@@ -149,45 +164,55 @@ function initViewport() {
 
     }
 function initStep(step) {
+    newSequence = [];
     s = mySteps[step];
-    $('#im1').attr('src',s.image);
-    initViewport();
-    updateZoom(s.zoom.x,s.zoom.y,s.zoom.w,s.zoom.h);
-    updateMask(s.mask.x,s.mask.y,s.mask.w,s.mask.h);
-    $('#im1').css('scale',zoom).css('marginLeft',tx+'px').css('marginTop',ty+"px");
+    if (s.image != $('#im1').attr('src')) changeImage(newSequence,s.image,0);
+    console.log(s.mask.x+","+s.mask.y+","+s.mask.w+","+s.mask.h);
+    console.log(mask_x+","+mask_y+","+mask_w+","+mask_h);
+    console.log(s.zoom.x+","+s.zoom.y+","+s.zoom.w+","+s.zoom.h);
+    console.log(zoom_x+","+zoom_y+","+zoom_w+","+zoom_h);
+    if (s.zoom.x != zoom_x || s.zoom.x != zoom_y || s.zoom.w != zoom_w || s.zoom.h != zoom_h)
+        zoomWindow(newSequence,s.zoom.x,s.zoom.y,s.zoom.w,s.zoom.h,0);
+    if (s.mask.x != mask_x || s.mask.y != mask_y || s.mask.w != mask_w || s.mask.h != mask_h)
+        maskWindow(newSequence,s.mask.x,s.mask.y,s.mask.w,s.mask.h,0);
+
 }
 function loadSequence() {
-       mySequence = [];
+       fullSequence = [];
        mySteps = [];
        for (i=0;i<sce.steps.length;i++) {
            s = sce.steps[i];
+           if (s.action === 'stop') {
+               myStep = {'i':fullSequence.length, 'image':s.image};
+           }
+
            if (s.action === 'loadImage' || s.action === 'stop') {
-               changeImage(s.image,300);
+               changeImage(fullSequence,s.image,300);
            }
            if (s.action === 'click') {
-               maskWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
-               zoomWindow(s.active.x,s.active.y,s.active.w,s.active.h,1000);
-               moveCursor(s.x,s.y,1500);
-               startClick(s.button,s.count,true,150);
+               maskWindow(fullSequence,s.active.x,s.active.y,s.active.w,s.active.h,1000);
+               zoomWindow(fullSequence,s.active.x,s.active.y,s.active.w,s.active.h,1000);
+               moveCursor(fullSequence,s.x,s.y,1500);
+               startClick(fullSequence,s.button,s.count,true,150);
            }
            if (s.action === 'zoomTo') {
                console.log('zoom');
-               zoomWindow(s.zone.x,s.zone.y,s.zone.w,s.zone.h,1000);
+               zoomWindow(fullSequence,s.zone.x,s.zone.y,s.zone.w,s.zone.h,1000);
            }
            if (s.action === 'text') {
-               changeText(s,300);
+               changeText(fullSequence,s,300);
            }
            if (s.action === 'wait') {
                delay = s.time;
            }
-           if (s.wait) delay = s.wait;
            if (s.action === 'stop') {
-               mySteps.push({'i':i, 'image':s.image, 'zoom':{'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h},
-                             'mask': {'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h} });
+               myStep['zoom']={'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h};
+               myStep['mask']={'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h};
+               mySteps.push(myStep);
            }
+           if (s.wait) delay = s.wait;
        }
-       zoomWindow(0,0,im_w,im_h,1000);
-
+       zoomWindow(fullSequence,0,0,im_w,im_h,1000);
    }
    function showImage(image) {
            console.log('showImage '+image);
@@ -205,10 +230,6 @@ function loadSequence() {
    }
        
    function updateMask(x,y,w,h) {
-       mask_x = x;
-       mask_y = y;
-       mask_w = w;
-       mask_h = h;
        v_x = (x /im_w) * viewport_w*zoom - viewport_x0;
        v_y = (y /im_h) * viewport_h*zoom - viewport_y0;
        v_w = (w / im_w) * viewport_w*zoom;
@@ -227,7 +248,7 @@ function loadSequence() {
        bm_y = v_y+v_h;
        if (bm_y<0) bm_y=0;
    }
-   function maskWindow(x,y,w,h,speed,queue) {
+   function maskWindow(seq,x,y,w,h,speed,queue) {
            if (speed == undefined) {
             speed=15000;
            }
@@ -235,17 +256,17 @@ function loadSequence() {
             queue = true;
            }
            updateMask(x,y,w,h);
-           mySequence.push({ e: $('#leftmask'), p: {width: lm_w}, options: { sequenceQueue: queue, delay:delay, duration: speed,  easing:'easeInSine' } });
-           mySequence.push({ e: $('#rightmask'), p: {width: rm_w,x:rm_x}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
-           mySequence.push({ e: $('#topmask'), p: {height: tm_h}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
-           mySequence.push({ e: $('#bottommask'), p: {height: bm_h,y:bm_y}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           mask_x = x;
+           mask_y = y;
+           mask_w = w;
+           mask_h = h;
+           seq.push({ e: $('#leftmask'), p: {width: lm_w}, options: { sequenceQueue: queue, delay:delay, duration: speed,  easing:'easeInSine' } });
+           seq.push({ e: $('#rightmask'), p: {width: rm_w,x:rm_x}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           seq.push({ e: $('#topmask'), p: {height: tm_h}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           seq.push({ e: $('#bottommask'), p: {height: bm_h,y:bm_y}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
 
        }
        function updateZoom(_x,_y,_w,_h) {
-         zoom_x = _x;
-         zoom_y = _y;
-         zoom_w = _w;
-         zoom_h = _h;
          x = _x - _w * 0.01;
          y = _y - _h * 0.01;
          w = _w * 1.02;
@@ -294,7 +315,7 @@ function loadSequence() {
          viewport_y0 = -ch;
        
        }
-       function zoomWindow(x,y,w,h,speed,queue) {
+       function zoomWindow(seq,x,y,w,h,speed,queue) {
          if (speed == undefined) {
             speed=1500;
            }
@@ -304,20 +325,24 @@ function loadSequence() {
          last_tx = tx;
          last_ty = ty;
          last_zoom = zoom;
-         updateZoom(x,y,w,h)
+         updateZoom(x,y,w,h);
+         zoom_x = x;
+         zoom_y = y;
+         zoom_w = w;
+         zoom_h = h;
          if ((last_tx != tx) && (last_ty != ty) && ( last_zoom != zoom)) {
-             mySequence.push({ e: $('#im1'), p: {scale:zoom, marginLeft: tx+"px",marginTop:ty+"px"}, options: { delay:delay, duration: speed,  easing:'easeInSine',sequenceQueue:queue } });
-             maskWindow(x,y,w,h,speed,false);
+             seq.push({ e: $('#im1'), p: {scale:zoom, marginLeft: tx+"px",marginTop:ty+"px"}, options: { delay:delay, duration: speed,  easing:'easeInSine',sequenceQueue:queue } });
+             maskWindow(seq,x,y,w,h,speed,false);
              delay = 0;
          }
 
        }
-       function changeImage(image,speed) {
+       function changeImage(seq,image,speed) {
            if (speed == undefined) {
             speed=50;
            }
            console.log('viewport_x='+viewport_x+', viewport_y='+viewport_y);
-           mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { delay:delay, duration: speed, easing:'easeOutQuart', complete: showImageCallback(image) } });
+           seq.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { delay:delay, duration: speed, easing:'easeOutQuart', complete: showImageCallback(image) } });
            delay = 0;
        }
        function showText(s) {
@@ -343,16 +368,16 @@ function loadSequence() {
        function showTextCallback(s) {
            return function() { showText(s);};
        }
-       function changeText(s,speed) {
+       function changeText(seq,s,speed) {
            if (speed == undefined) {
             speed=50;
            }
            
-           mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showTextCallback(s) } });
+           seq.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showTextCallback(s) } });
        }
        
        
-       function moveCursor(nx,ny,speed,complete) {
+       function moveCursor(seq,nx,ny,speed,complete) {
            if (speed == undefined) {
             speed=1500;
            }
@@ -360,13 +385,13 @@ function loadSequence() {
            if (nx != 0 || ny != 0) {
                console.log('udateCursor '+nx+','+ny);
                updateCursor(nx,ny);
-               mySequence.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { delay:delay, duration: speed, easing:'easeOutQuart', complete: complete } });
-               mySequence.push({e: $('.click'), p:{left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { delay:delay, duration:0, sequenceQueue: true }});
+               seq.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { delay:delay, duration: speed, easing:'easeOutQuart', complete: complete } });
+               seq.push({e: $('.click'), p:{left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { delay:delay, duration:0, sequenceQueue: true }});
 
            }
            delay = 0;
        }
-       function startClick(btn,repeat,full,speed) {
+       function startClick(seq,btn,repeat,full,speed) {
            if (speed == undefined) {
             speed=400;
            }
@@ -383,21 +408,21 @@ function loadSequence() {
            }
            console.log(color);
            for (r=0;r<repeat;r++) {
-               mySequence.push({e: $('.click'), p:{ left:(viewport_x-clickcircle/2)+'px',top:(viewport_y-clickcircle/2)+'px',width:(clickcircle)+'px',height:(clickcircle)+'px'}, options: { delay:delay, duration:0, complete: function () { $('.click').css('border-color',color).css('visibility','visible');} }});
-               mySequence.push({ e: $('.click'), p: {left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { duration: speed/repeat}});
+               seq.push({e: $('.click'), p:{ left:(viewport_x-clickcircle/2)+'px',top:(viewport_y-clickcircle/2)+'px',width:(clickcircle)+'px',height:(clickcircle)+'px'}, options: { delay:delay, duration:0, complete: function () { $('.click').css('border-color',color).css('visibility','visible');} }});
+               seq.push({ e: $('.click'), p: {left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { duration: speed/repeat}});
            }
            if (full) {
-               mySequence.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed/repeat, complete: function () { $('.click').css('visibility','hidden');}}});
+               seq.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed/repeat, complete: function () { $('.click').css('visibility','hidden');}}});
            }
            delay = 0;
 
        }
        
-       function endClick(speed) {
+       function endClick(seq,speed) {
            if (speed == undefined) {
               speed=400;
            }
-           mySequence.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed, complete: function () { $('.click').css('visibility','hidden');}}});
+           seq.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed, complete: function () { $('.click').css('visibility','hidden');}}});
        }
        
 $(document).ready(function(){
@@ -420,17 +445,14 @@ $(document).ready(function(){
         location.reload();
     }); 
    function go() {
-          currentStep = 4;
-          if (mySequence == undefined) loadSequence();
-
-          var seq = [];
+          if (fullSequence == undefined) loadSequence();
+          initStep(currentStep);
+          console.log(mySteps[currentStep]['i']+', '+mySteps[currentStep+1]['i']);
           for (i = mySteps[currentStep]['i']; i<mySteps[currentStep+1]['i'];i++) {
-            seq.push(mySequence[i]);
+            newSequence.push(fullSequence[i]);
           }
-          console.log(seq)
-          //initStep(currentStep);
-          $.Velocity.RunSequence(mySequence);
-          //$.Velocity.RunSequence(seq);
+          //$.Velocity.RunSequence(fullSequence);
+          $.Velocity.RunSequence(newSequence);
           currentStep++;
    }
 
