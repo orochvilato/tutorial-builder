@@ -199,7 +199,7 @@ function loadSequence() {
        currentStep = 0;
        for (i=0;i<sce.steps.length;i++) {
            s = sce.steps[i];
-           if (s.action === 'stop') {
+           if (s.action === 'step') {
                if (s.title) {
                    var title = s.title;
                } else {
@@ -213,7 +213,7 @@ function loadSequence() {
                addStepTitle(fullSequence,title);
            }
 
-           if (s.action === 'loadImage' || s.action === 'stop') {
+           if (s.action === 'loadImage' || s.action === 'step') {
                changeImage(fullSequence,s.image,300);
            }
            if (s.action === 'click') {
@@ -232,7 +232,7 @@ function loadSequence() {
            if (s.action === 'wait') {
                delay = s.time;
            }
-           if (s.action === 'stop') {
+           if (s.action === 'step') {
                myStep['zoom']={'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h};
                myStep['mask']={'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h};
                myStep['mouse'] = {'x':mouse_x,'y':mouse_y};
@@ -240,11 +240,12 @@ function loadSequence() {
            }
            if (s.wait) delay = s.wait;
        }
+       maskWindow(fullSequence,0,0,im_w,im_h,1000);
        zoomWindow(fullSequence,0,0,im_w,im_h,1000);
-       setStep(fullSequence,0);
-       //mySteps[mySteps.length-1]['i'] = fullSequence.length-1;
-       //mySteps[mySteps.length-1]['zoom']={'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h};
-       //mySteps[mySteps.length-1]['mask']={'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h};
+       changeText(fullSequence,{ 'content':'Fin du tutorial !','type':'markdown'});
+       
+       mySteps[mySteps.length-1]['zoom']={'x':0,'y':0, 'w':im_w,'h':im_h};
+       mySteps[mySteps.length-1]['mask']={'x':0, 'y':0, 'w':im_w, 'h':im_h};
 
    }
    function showImage(image) {
@@ -508,6 +509,7 @@ $(document).ready(function(){
        if (force == undefined) {
            force = false;
        }
+       
        if (force || (step<mySteps.length && step>=0 && step != currentStep)) {
                newSequence = [];
                currentStep = step;
@@ -516,6 +518,11 @@ $(document).ready(function(){
        }
    } 
    function play() {
+       if (currentStep >= mySteps.length) {
+           return
+           //var end = fullSequence.length;
+       }
+
        if (playon == true) {
           jumpStep(currentStep,true);
           return
@@ -524,17 +531,12 @@ $(document).ready(function(){
        newSequence = [];
        
        start = mySteps[currentStep]['i'];
-       if (currentStep == mySteps.length-1) {
-           var end = fullSequence.length;
-       } else {
-           var end = mySteps[currentStep+1]['i'];
-       }
+       //var end = mySteps[currentStep+1]['i'];
        var end = fullSequence.length;
 
        for (i = start; i<end;i++) {
            newSequence.push(fullSequence[i]);
        }
-       
        $.Velocity.RunSequence(newSequence);
       
    }

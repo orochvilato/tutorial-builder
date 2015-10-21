@@ -198,7 +198,7 @@ class Snapshot():
             if (tlelt['event'].type!='timed'):
                 t = tlelt['timestamp']-self.starttime
                 if 'Press' in tlelt['event'].type:
-                    steps.append(dict(action="stop",image=""))
+                    steps.append(dict(action="step",image=""))
                         
                     if compare(self.lastevt,self.last):
                         if not self.lastevt['iname'] in self.imagesnames.keys():
