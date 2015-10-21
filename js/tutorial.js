@@ -1,214 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-<style>
 
-    #viewport {
-        //float: left;
-        position: relative;
-        //width:100%;
-        //height:500px;
-        margin:0 auto;
-        overflow: hidden;
-        //border: solid;
-    }
-    .info {
-        font-family: "Open Sans", sans-serif;
-        font-size: 110%;
-        line-height: 1.35em;
-        color: #3a3a3a;
-        background-color: #eeeeee;
-        border-color: #888888;
-        padding: 15px;
-        margin-bottom: 20px;
-        border: 2px solid;
-        border-radius: 6px;
-    }
-    .msgbox {
-        position: absolute;
-        top:30%;
-        left:30%;
-        width:40%;
-        height:40%;
-        display: flex;
-        align-items: center; 
-        text-align: center;
-    }
-    .zone {
-        left:40px;
-        top:40px;
-        width:400px;
-        height:300px;
-        border-color: black;
-        border-style: solid;
-        border-width: 2px;
-        position: absolute;
+window.tutorial = (function () {
+    function Tutorial(params) {
+        this.params = params;
+        this.image = t.image;
+        this.sequence = [];
+        this.steps = [];
+        this.current = 0;
         
-        -webkit-animation: blink 1s infinite;
-        -moz-animation:    blink 1s infinite;
-        -ms-animation:     blink 1s infinite;
-
-    }
-    .image {
-        margin:0px;
-        //position:absolute;
-        display: block;
-        width:100%;
-        //max-height:100%;
-    }
-    .cursor {
-        position:relative;
-        left:100px;
-        top: 100px;
-        width:20px;
-    }
-    @-webkit-keyframes blink {
-        0%   { border-color:#777; }
-        50%  { border-color:#000;}
-        100% { border-color:#777; }
-    }
-    @-moz-keyframes blink {
-        0%   { border-color:#777; }
-        50%  { border-color:#000;}
-        100% { border-color:#777; }
-    }
-    @-ms-keyframes blink {
-        0%   { border-color:#777; }
-        50%  { border-color:#000;}
-        100% { border-color:#777; }
-    }
-    .click {
-        visibility: hidden;
-        border-radius: 50%;
-        border-color: red;
-        border-style: solid;
-        border-width: 4px;
-        opacity: 0.5;
-        width:0px;
-        height:0px;
-        //background: beige;
-        position: absolute;
-        top:50px;
-        left:50px;
-    }
-</style>
-<link href="css/bootstrap.min.css" rel="stylesheet">
-<link href="css/font-awesome.min.css" rel="stylesheet">
-<script src="js/jquery-1.11.3.min.js"></script>
-<script src="js/velocity.min.js"></script>
-<script src="js/velocity.ui.js"></script>
-<script src="js/bootstrap.min.js"></script>
-<script src="js/showdown.min.js"></script>
-<script src="js/tutorial.js"></script>
-<script src="data.js"></script>
-<script> 
-
-var converter = new showdown.Converter();
-var clickcircle = 50;
-var step = 0;
-var substep = 0;
-var zoom = 1;
-var cursor_x = 450;
-var cursor_y = 350;
-var current;
-var currentStep;
-var mySequence;
-var newSequence = [];
-var fullSequence;
-var Seq;
-var mySteps;
-var zoomActive=false;
-var playon=false;
-var delay = 0;
-var viewport;
-var viewport_w;
-var viewport_h;
-var im_w;
-var im_h;
-var tx;
-var ty;
-var viewport_x = cursor_x;
-var viewport_x0=0;
-var viewport_y = cursor_y;
-var viewport_y0=0;
-var lm_w;
-var rm_w;
-var rm_x;
-var tm_h;
-var bm_h;
-var bm_y;     
-var zoom_x;
-var zoom_y;
-var zoom_h;
-var zoom_w;
-var mask_x;
-var mask_y;
-var mask_h;
-var mask_w;
-var mouse_x;
-var mouse_y;
-
-function initViewport() {
         
-        im_w = document.getElementById('im1').naturalWidth;
-        im_h = document.getElementById('im1').naturalHeight;
-        viewport = document.getElementById('viewport');
-        if (viewport.clientWidth != viewport_w) {
-            viewport_w = viewport.clientWidth;
-            viewport_h = viewport.clientHeight;
-            $('#mask').attr('width',viewport_w).attr('height',viewport_h);
-            $('#leftmask').attr('x',0).attr('y',0).attr('width',0).attr('height',viewport_h);
-            $('#rightmask').attr('x',viewport_w).attr('y',0).attr('width',0).attr('height',viewport_h);
-            $('#topmask').attr('x',0).attr('y',0).attr('width',viewport_w).attr('height',0);
-            $('#bottommask').attr('x',0).attr('y',viewport_h).attr('width',viewport_w).attr('height',0);
-            zoom = 1;
-            zoom_x = 0;
-            zoom_y = 0;
-            zoom_w = im_w;
-            zoom_h = im_h;
-            mask_x = 0;
-            mask_y = 0;
-            mask_w = im_w;
-            mask_h = im_h;
-            mouse_x = cursor_x;
-            mouse_y = cursor_y;
-            zoom = 1;
-        }
-        $('#viewport').css('height',viewport_h);
-        if (fullSequence == undefined) {
-            loadSequence();
-            currentStep = 0;
-        }
-        
-        console.log('viewport_w='+viewport_w+', viewport_h='+viewport_h);
-
-    }
-function initStep(step) {
-    s = mySteps[step];
-    if (s.image != $('#im1').attr('src')) changeImage(newSequence,s.image,0);
-    if (s.zoom && (s.zoom.x != zoom_x || s.zoom.x != zoom_y || s.zoom.w != zoom_w || s.zoom.h != zoom_h))
-        zoomWindow(newSequence,s.zoom.x,s.zoom.y,s.zoom.w,s.zoom.h,0);
-    if (s.mask && (s.mask.x != mask_x || s.mask.y != mask_y || s.mask.w != mask_w || s.mask.h != mask_h))
-        maskWindow(newSequence,s.mask.x,s.mask.y,s.mask.w,s.mask.h,0);
-    if (s.mouse && (s.mouse.x != mouse_x || s.mouse.y != mouse_y))
-        console.log('mouse : '+s.mouse.x+", "+s.mouse.y);
-        moveCursor(newSequence,s.mouse.x,s.mouse.y,0);
-    if (s.title)
-        addStepTitle(newSequence,s.title);
-
-}
-function setStep(seq,value) {
-    console.log('value='+value);
-    seq.push({ e: $('#step'), p:{opacity:1}, options:{ duration:0, complete: function () {
-           currentStep = value;
-           console.log("currentStep :"+currentStep);
-    }}});
-
-}
-function loadSequence() {
-       fullSequence = [];
-       mySteps = [];
-       currentStep = 0;
+        function init() {
+           currentStep = 0;
        for (i=0;i<sce.steps.length;i++) {
            s = sce.steps[i];
            if (s.action === 'step') {
@@ -217,7 +18,7 @@ function loadSequence() {
                } else {
                    var title = "Step "+(mySteps.length+1);
                }
-
+               
                setStep(fullSequence, currentStep + 1);
                currentStep++;
                
@@ -481,128 +282,16 @@ function loadSequence() {
    }
 
 
-$(document).ready(function(){
+
+
+
+
+
     
-    //$.getJSON( "test.json", function( data ) {
-    //    sce = data;
-    //});
-    $("#im1").attr('src',sce['steps'][0]['image']);
-   
-    $("#play").click(function(){
-        play();
-    });   
-    $('#start').click(function() {
-        jumpStep(0);
-    });
-    $('#next').click(function() {
-        jumpStep(currentStep+1);
-    });
-    $('#previous').click(function() {
-        jumpStep(currentStep-1);
-    });
-   
-   
-   $( window ).resize(function() {
-       
-        location.reload();
-    });
-   
-   function jumpStep(step,force) {
-       $('#leftmask').velocity('stop');
-       $('#rightmask').velocity('stop');
-       $('#topmask').velocity('stop');
-       $('#bottommask').velocity('stop');
-       $('#im1').velocity('stop');
-       $('.cursor').velocity('stop');
-       $('#step').velocity('stop');
-       $('.click').velocity('stop').css('visibility','hidden');
-       $('#info').velocity('stop');
-       
-       playon = false;
-       if (force == undefined) {
-           force = false;
-       }
-       
-       if (force || (step<mySteps.length && step>=0 && step != currentStep)) {
-               newSequence = [];
-               currentStep = step;
-               initStep(step);
-               $.Velocity.RunSequence(newSequence);
-       }
-   } 
-   function play() {
-       if (currentStep >= mySteps.length) {
-           return
-           //var end = fullSequence.length;
-       }
-
-       if (playon == true) {
-          jumpStep(currentStep,true);
-          return
-       }
-       playon = true;
-       newSequence = [];
-       
-       start = mySteps[currentStep]['i'];
-       //var end = mySteps[currentStep+1]['i'];
-       var end = fullSequence.length;
-
-       for (i = start; i<end;i++) {
-           newSequence.push(fullSequence[i]);
-       }
-       $.Velocity.RunSequence(newSequence);
-      
-   }
-
-   alert(tutorial.init(sce).length);
-       
-});
-</script> 
-</head>
-<body>
-<div class="container">
-<div class="row">
-<div class="col-md-12">
-
-<div class="btn-group" style="display:block;">
-<button id="start" type="button" class="btn btn-primary"><i class="fa fa-fast-backward"></i></button>
-<button id="previous" type="button" class="btn btn-primary"><i class="fa fa-step-backward"></i></button>
-<button id="play" type="button" class="btn btn-primary"><i class="fa fa-play"></i></button>
-<button id="next" type="button" class="btn btn-primary"><i class="fa fa-step-forward"></i></button>
-</div>
-<div style="text-align:center;display:block;"><span id="step" class="anim" style="font-size:150%;"></span></div>
-</div>
-</div>
-<div class="row">
-    <div class="col-md-12">
-    <div class="panel panel-default">
-        <div class="panel-body">
-            <div id="viewport">
-                <img id="im1" class="image anim" onload="initViewport();"/>
-                <svg id="mask" style="left:0;top:0;opacity:0.8; position: absolute;">
-                <rect id="leftmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                <rect id="rightmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                <rect id="topmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                <rect id="bottommask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                </svg>
-                <div style="left:0; top:0; position: absolute;">
-            		<div class="click" class="anim"></div>
-            		<img class="cursor"  class="anim" src="cursor.png"/>
-                </div>
-                <div class="info msgbox" style="opacity:0;"><span style="width:100%;">test</span></div>
-
-            </div>
-
-        </div>
-    </div>
-    </div>
-<div class="col-md-12">
-<div class="info" id="info" style="opacity:0;"></div>
- 
-</div>
-
-</div>
-</div>
-</body>
-</html>
-
+    var tutorial = {
+        init: function (tuto) {
+            return new Tutorial(tuto);
+        }, 
+    };
+    return tutorial;
+}());
