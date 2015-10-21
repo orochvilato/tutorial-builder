@@ -24,6 +24,16 @@
         border: 2px solid;
         border-radius: 6px;
     }
+    .msgbox {
+        position: absolute;
+        top:30%;
+        left:30%;
+        width:40%;
+        height:40%;
+        display: flex;
+        align-items: center; 
+        text-align: center;
+    }
     .zone {
         left:40px;
         top:40px;
@@ -409,7 +419,8 @@ function loadSequence() {
            
            seq.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showTextCallback(s) } });
        }
-       
+       function showMessage(seq,s,speed) {
+       }          
        
        function moveCursor(seq,nx,ny,speed,complete) {
            if (speed == undefined) {
@@ -502,7 +513,7 @@ $(document).ready(function(){
        $('#im1').velocity('stop');
        $('.cursor').velocity('stop');
        $('#step').velocity('stop');
-       $('.click').velocity('stop');
+       $('.click').velocity('stop').css('visibility','hidden');
        $('#info').velocity('stop');
        
        playon = false;
@@ -579,8 +590,10 @@ $(document).ready(function(){
             		<div class="click" class="anim"></div>
             		<img class="cursor"  class="anim" src="cursor.png"/>
                 </div>
+                <div class="info msgbox" style="opacity:0;"><span style="width:100%;">test</span></div>
 
             </div>
+
         </div>
     </div>
     </div>
