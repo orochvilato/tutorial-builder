@@ -3,7 +3,7 @@
 <head>
 <style>
 
-    #viewport {
+    .viewport {
         //float: left;
         position: relative;
         //width:100%;
@@ -553,8 +553,9 @@ $(document).ready(function(){
        $.Velocity.RunSequence(newSequence);
       
    }
-
-   alert(tutorial.init(sce).length);
+   T = new tutorial.Tutorial(sce);
+   alert(T);
+   //alert(tutorial.init(sce));
        
 });
 </script> 
@@ -565,31 +566,31 @@ $(document).ready(function(){
 <div class="col-md-12">
 
 <div class="btn-group" style="display:block;">
-<button id="start" type="button" class="btn btn-primary"><i class="fa fa-fast-backward"></i></button>
-<button id="previous" type="button" class="btn btn-primary"><i class="fa fa-step-backward"></i></button>
-<button id="play" type="button" class="btn btn-primary"><i class="fa fa-play"></i></button>
-<button id="next" type="button" class="btn btn-primary"><i class="fa fa-step-forward"></i></button>
+<button id="tuto-start" type="button" class="btn btn-primary"><i class="fa fa-fast-backward"></i></button>
+<button id="tuto-previous" type="button" class="btn btn-primary"><i class="fa fa-step-backward"></i></button>
+<button id="tuto-play" type="button" class="btn btn-primary"><i class="fa fa-play"></i></button>
+<button id="tuto-next" type="button" class="btn btn-primary"><i class="fa fa-step-forward"></i></button>
 </div>
-<div style="text-align:center;display:block;"><span id="step" class="anim" style="font-size:150%;"></span></div>
+<div style="text-align:center;display:block;"><span id="tuto-step" class="anim" style="font-size:150%;"></span></div>
 </div>
 </div>
 <div class="row">
     <div class="col-md-12">
     <div class="panel panel-default">
-        <div class="panel-body">
-            <div id="viewport">
-                <img id="im1" class="image anim" onload="initViewport();"/>
-                <svg id="mask" style="left:0;top:0;opacity:0.8; position: absolute;">
-                <rect id="leftmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                <rect id="rightmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                <rect id="topmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
-                <rect id="bottommask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+        <div id="tuto-panel" class="panel-body">
+            <div id="tuto-viewport" class="viewport">
+                <img id="tuto-image" class="image anim" onload="initViewport();"/>
+                <svg id="tuto-mask" style="left:0;top:0;opacity:0.8; position: absolute;">
+                <rect id="tuto-leftmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="tuto-rightmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="tuto-topmask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
+                <rect id="tuto-bottommask" class="anim" x="1" y="1" width="100" height="100" style="stroke: none; fill: #ffffff;"/>
                 </svg>
                 <div style="left:0; top:0; position: absolute;">
-            		<div class="click" class="anim"></div>
-            		<img class="cursor"  class="anim" src="cursor.png"/>
+            		<div id="tuto-click" class="click" class="anim"></div>
+            		<img id="tuto-cursor" class="cursor"  class="anim" src="cursor.png"/>
                 </div>
-                <div class="info msgbox" style="opacity:0;"><span style="width:100%;">test</span></div>
+                <div id="tuto-msg" class="info msgbox" style="opacity:0;"><span style="width:100%;">test</span></div>
 
             </div>
 

@@ -1,137 +1,184 @@
 
 window.tutorial = (function () {
+    var globalparams = {
+        'clickcircle': 50,
+    }
     function Tutorial(params) {
         this.params = params;
-        this.image = t.image;
-        this.sequence = [];
+        this.image = params.image;
+        this.sequence = new Sequence();
+        this.sequence.current.image = params.image;
+        image_elt = document.getElementById(this.params.name+'-image')
+        image_elt.onload = function() { initViewport(this); };
+        image_elt.src = this.image.name;
+    }
+    function initViewport(tutorial) {
+        current = tutorial.sequence.current;
+
+        current.image.w = document.getElementById(tutorial.params.name+'-image').naturalWidth;
+        current.image.h = document.getElementById(tutorial.params.name+'-image').naturalHeight;
+        viewport_elt = document.getElementById(tutorial.params.name+'-viewport');
+        if (viewport_elt.clientWidth != current.viewport.w) {
+            current.viewport.w = viewport_elt.clientWidth;
+            current.viewport.h = viewport_elt.clientHeight;
+            $('#'+tutorial.params.name+'-leftmask').attr('width',current.viewport.w).attr('height',current.viewport.h);
+            $('#'+tutorial.params.name+'-leftmask').attr('x',0).attr('y',0).attr('width',0).attr('height',current.viewport.h);
+            $('#'+tutorial.params.name+'-rightmask').attr('x',current.viewport.w).attr('y',0).attr('width',0).attr('height',current.viewport.h);
+            $('#'+tutorial.params.name+'-topmask').attr('x',0).attr('y',0).attr('width',current.viewport.w).attr('height',0);
+            $('#'+tutorial.params.name+'-bottommask').attr('x',0).attr('y',current.viewport.h).attr('width',current.viewport.w).attr('height',0);
+            current.image.zoom = 1;
+            current.zoom.x = 0;
+            current.zoom.y = 0;
+            current.zoom.w = current.image.w;
+            current.zoom.h = current.image.h;
+            current.mask.x = 0;
+            current.mask.y = 0;
+            current.mask.w = current.image.w;
+            current.mask.h = current.image.h;
+            current.mouse.x = 300;
+            current.mouse.y = 200;
+        }
+        $('#'+tutorial.params.name+'-viewport').css('height',current.viewport.h);
+        tutorial.sequence.init(params.steps);
+        console.log('viewport_w='+current.viewport.w+', viewport_h='+current.viewport.h);
+
+    }
+    function Sequence() {
+        this.params = {};
+        for(var key in globalparams) {
+            this.params[key] = globalparams[key];
+        }
+        this.items = [];
         this.steps = [];
-        this.current = 0;
-        
-        
-        function init() {
-           currentStep = 0;
-       for (i=0;i<sce.steps.length;i++) {
-           s = sce.steps[i];
-           if (s.action === 'step') {
-               if (s.title) {
-                   var title = s.title;
-               } else {
-                   var title = "Step "+(mySteps.length+1);
+        this.current = { 'image':{ 'zoom':1},
+                         'zoom':{},
+                         'mouse':{},
+                         'viewport': {},
+                         'step': {},
+                         'mask':{'left':{},'right':{},'top':{},'bottom':{}}
+                       };
+    }            
+    Sequence.prototype.init = function (scenario) {
+           this.items = [];
+           var currentStep = 0;
+           for (i=0;i<scenario.length;i++) {
+               s = scenario[i];
+               if (s.action === 'step') {
+                   if (s.title == undefined) {
+                       s.title = "Step "+(this.steps.length+1);
+                   }
+                   currentStep++;
+                   this.setCurrentStep(currentStep);
+                   myStep = {'i':this.items.length, 'image':s.image,'title':s.title};
+                   this.addStepTitle(s);
                }
-               
-               setStep(fullSequence, currentStep + 1);
-               currentStep++;
-               
-               myStep = {'i':fullSequence.length, 'image':s.image,'title':title};
-               addStepTitle(fullSequence,title);
-           }
 
-           if (s.action === 'loadImage' || s.action === 'step') {
-               changeImage(fullSequence,s.image,300);
+               if (s.action === 'loadImage' || s.action === 'step') {
+                   this.changeImage(s);
+               }
+               if (s.action === 'click') {
+                   this.maskWindow(s);
+                   this.zoomWindow(s);
+                   this.moveCursor(s);
+                   this.startClick(s,true);
+               }
+               if (s.action === 'zoomTo') {
+                   this.zoomWindow(s);
+               }
+               if (s.action === 'text') {
+                   this.changeText(s);
+               }
+               if (s.action === 'wait') {
+                   delay = s.time;
+               }
+               if (s.action === 'step') {
+                   myStep['zoom']={'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h};
+                   myStep['mask']={'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h};
+                   myStep['mouse'] = {'x':mouse_x,'y':mouse_y};
+                   this.steps.push(myStep);
+               }
+               if (s.wait) delay = s.wait;
            }
-           if (s.action === 'click') {
-               maskWindow(fullSequence,s.active.x,s.active.y,s.active.w,s.active.h,1000);
-               zoomWindow(fullSequence,s.active.x,s.active.y,s.active.w,s.active.h,1000);
-               moveCursor(fullSequence,s.x,s.y,1500);
-               startClick(fullSequence,s.button,s.count,true,150);
-           }
-           if (s.action === 'zoomTo') {
-               console.log('zoom');
-               zoomWindow(fullSequence,s.zone.x,s.zone.y,s.zone.w,s.zone.h,1000);
-           }
-           if (s.action === 'text') {
-               changeText(fullSequence,s,300);
-           }
-           if (s.action === 'wait') {
-               delay = s.time;
-           }
-           if (s.action === 'step') {
-               myStep['zoom']={'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h};
-               myStep['mask']={'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h};
-               myStep['mouse'] = {'x':mouse_x,'y':mouse_y};
-               mySteps.push(myStep);
-           }
-           if (s.wait) delay = s.wait;
-       }
-       maskWindow(fullSequence,0,0,im_w,im_h,1000);
-       zoomWindow(fullSequence,0,0,im_w,im_h,1000);
-       changeText(fullSequence,{ 'content':'Fin du tutorial !','type':'markdown'});
+           this.maskWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h});
+           this.zoomWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h});
+           this.changeText({'content':'Fin du tutorial !','type':'markdown'});
        
-       mySteps[mySteps.length-1]['zoom']={'x':0,'y':0, 'w':im_w,'h':im_h};
-       mySteps[mySteps.length-1]['mask']={'x':0, 'y':0, 'w':im_w, 'h':im_h};
+           this.steps[currentStep-1]['zoom']={'x':0,'y':0, 'w':this.current.image.w,'h':this.current.image.h};
+           this.steps[currentStep-1]['mask']={'x':0, 'y':0, 'w':this.current.image.w, 'h':this.current.image.h};
 
-   }
-   function showImage(image) {
-           console.log('showImage '+image);
-           $("#im1").attr('src',image);
-       }
-   function showImageCallback(image) {
-            console.log('showImageCallback '+image);
-            return function() { showImage(image);};
-       }
-   function updateCursor(x,y) {
-           im_x = x;
-           im_y = y;
-           viewport_x = (x /im_w) * viewport_w*zoom - viewport_x0;
-           viewport_y = (y /im_h) * viewport_h*zoom - viewport_y0;
-   }
+       };
        
-   function updateMask(x,y,w,h) {
-       v_x = (x /im_w) * viewport_w*zoom - viewport_x0;
-       v_y = (y /im_h) * viewport_h*zoom - viewport_y0;
-       v_w = (w / im_w) * viewport_w*zoom;
-       v_h = (h / im_h) * viewport_h*zoom;         
+       Sequence.prototype.setCurrentStep = function (value) {
+          console.log('value='+value);
+          this.items.push({ e: $('#'+this.params.name+'-step'), p:{opacity:1}, options:{ duration:0, complete: function () {
+             this.current.step = value;
+             console.log("currentStep :"+this.current.step);
+          }}});
+       };
+       
+       Sequence.prototype.updateCursor = function (x,y) {
+           this.current.image.x = x;
+           this.current.image.x = y;
+           this.current.viewport.x = (x / this.current.image.w) * this.current.viewport.w * this.current.image.zoom - this.current.viewport.x0;
+           this.current.viewport.y = (y / this.current.image.h) * this.current.viewport.h * this.current.image.zoom - this.current.viewport.y0;
+       };
+       
+       Sequence.prototype.updateMask = function (x,y,w,h) {
+           v_x = (x / this.current.image.w) * this.current.viewport.w*this.current.image.zoom - this.current.viewport.x0;
+           v_y = (y / this.current.image.h) * this.current.viewport.h*this.current.image.zoom - this.current.viewport.y0;
+           v_w = (w / this.current.image.w) * this.current.viewport.w*this.current.image.zoom;
+           v_h = (h / this.current.image.h) * this.current.viewport.h*this.current.image.zoom;         
     
-       lm_w = v_x;
-       if (lm_w<0) lm_w=0;
-       rm_w = viewport_w-v_x-v_w;
-       if (rm_w<0) rm_w=0;
-       rm_x = v_x+v_w;
-       if (rm_x<0) rm_x=0;
-       tm_h = v_y;
-       if (tm_h<0) tm_h=0;
-       bm_h = viewport_h-v_y-v_h;
-       if (bm_h<0) bm_h=0;
-       bm_y = v_y+v_h;
-       if (bm_y<0) bm_y=0;
-   }
-   function maskWindow(seq,x,y,w,h,speed,queue) {
-           if (speed == undefined) {
-            speed=15000;
-           }
-           if (queue == undefined) {
-            queue = true;
-           }
-           updateMask(x,y,w,h);
-           mask_x = x;
-           mask_y = y;
-           mask_w = w;
-           mask_h = h;
-           seq.push({ e: $('#leftmask'), p: {width: lm_w}, options: { sequenceQueue: queue, delay:delay, duration: speed,  easing:'easeInSine' } });
-           seq.push({ e: $('#rightmask'), p: {width: rm_w,x:rm_x}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
-           seq.push({ e: $('#topmask'), p: {height: tm_h}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
-           seq.push({ e: $('#bottommask'), p: {height: bm_h,y:bm_y}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           this.current.mask.left.w = ((v_x < 0) ? 0 : v_x);
+           rm_w = viewport_w-v_x-v_w;
 
-       }
-       function updateZoom(_x,_y,_w,_h) {
-         x = _x - _w * 0.01;
-         y = _y - _h * 0.01;
-         w = _w * 1.02;
-         h = _h * 1.02;
+           this.current.mask.right.w = ((rm_w < 0) ? 0 : rm_w);
+           rm_x = v_x+v_w;
+           this.current.mask.right.x = ((rm_x < 0) ? 0 : rm_x);
+
+           this.current.mask.top.h = ((v_y < 0) ? 0 : v_y);
+
+           bm_h = viewport_h-v_y-v_h;
+           this.current.mask.bottom.h = ((bm_h < 0) ? 0 : bm_h);
+           bm_y = v_y+v_h;
+           this.current.mask.bottom_y = ((bm_y <<0) ? 0 : bm_y);
+           
+       };
+       
+       Sequence.prototype.maskWindow = function (s,queue) {
+           speed = ((s.speed == undefined) ? 1500 : s.speed);
+           queue = ((queue == undefined) ? true : queue);
+
+           this.updateMask(s.x,s.y,s.w,s.h);
+           this.current.mask.x = s.x;
+           this.current.mask.y = s.y;
+           this.current.mask.w = s.w;
+           this.current.mask.h = s.h;
+           this.items.push({ e: $('#'+this.params.name+'-leftmask'), p: {width: this.current.mask.left.w}, options: { sequenceQueue: queue, delay:delay, duration: speed,  easing:'easeInSine' } });
+           this.items.push({ e: $('#'+this.params.name+'-rightmask'), p: {width: this.current.mask.right.w,x:this.current.mask.right.x}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           this.items.push({ e: $('#'+this.params.name+'-topmask'), p: {height: this.current.mask.top.h}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           this.items.push({ e: $('#'+this.params.name+'-bottommask'), p: {height: this.current.mask.bottom.h, y: this.current.mask.bottom.y}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+
+       };
+       
+       Sequence.prototype.updateZoom = function (_x,_y,_w,_h) {
+       
+           x = _x - _w * 0.01;
+           y = _y - _h * 0.01;
+           w = _w * 1.02;
+           h = _h * 1.02;
          
-         console.log('x='+x+', y='+y+', w='+w+', h='+h);
-         var vx = x / im_w * viewport_w;
-         var vy = y / im_h * viewport_h;
-         var vw = w / im_w * viewport_w;
-         var vh = h / im_h * viewport_h;
-         console.log('vx='+vx+', vy='+vy+', vw='+vw+', vh='+vh);
+           var vx = x / im_w * this.current.viewport.w;
+           var vy = y / im_h * this.current.viewport.h;
+           var vw = w / im_w * this.current.viewport.w;
+           var vh = h / im_h * this.current.viewport.h;
 
-         var zw = viewport_w/vw;
-         var zh = viewport_h/vh;
-         console.log('zw='+zw,' zh='+zh);
-         if (zw>zh) {
-            var z = zh;
-         } else {
+           var zw = this.current.viewport.w/vw;
+           var zh = this.current.viewport.h/vh;
+           console.log('zw='+zw,' zh='+zh);
+           if (zw>zh) {
+              var z = zh;
+           } else {
             var z = zw;
          }
          if (z>2) {
@@ -142,8 +189,8 @@ window.tutorial = (function () {
          }
          
          // Pour centrer la fenetre
-         tx0 = viewport_w * (z-1) / 2;
-         ty0 = viewport_h * (z-1) / 2;
+         tx0 = this.current.viewport.w * (z-1) / 2;
+         ty0 = this.current.viewport.h * (z-1) / 2;
          cw = (viewport_w - vw * z) /2 - vx*z;
          if (cw>0) cw=0;
          if (cw<-2*tx0) cw = -2*tx0;
@@ -154,45 +201,45 @@ window.tutorial = (function () {
          var _tx = tx0 + cw; 
 
          var _ty = ty0 + ch;
-         tx = _tx;
-         ty = _ty;
-         zoom = z;
+         this.current.image.tx = _tx;
+         this.current.image.ty = _ty;
+         this.current.image.zoom = z;
          
-         viewport_x0 = -cw;
-         viewport_y0 = -ch;
+         this.current.viewport.x0 = -cw;
+         this.current.viewport.y0 = -ch;
        
-       }
-       function zoomWindow(seq,x,y,w,h,speed,queue) {
-         if (speed == undefined) {
-            speed=1500;
-           }
-           if (queue == undefined) {
-            queue = true;
-           }
-         last_tx = tx;
-         last_ty = ty;
-         last_zoom = zoom;
-         updateZoom(x,y,w,h);
-         zoom_x = x;
-         zoom_y = y;
-         zoom_w = w;
-         zoom_h = h;
-         if ((last_tx != tx) && (last_ty != ty) && ( last_zoom != zoom)) {
-             seq.push({ e: $('#im1'), p: {scale:zoom, marginLeft: tx+"px",marginTop:ty+"px"}, options: { delay:delay, duration: speed,  easing:'easeInSine',sequenceQueue:queue } });
-             maskWindow(seq,x,y,w,h,speed,false);
-             delay = 0;
+       };
+       
+       Sequence.prototype.zoomWindow = function (s,queue) {
+           speed = ((s.speed == undefined) ? 1500 : s.speed);
+           queue = ((queue == undefined) ? true : queue);
+
+         last_tx = this.current.image.tx;
+         last_ty = this.current.image.ty;
+         last_zoom = this.current.image.zoom;
+         this.updateZoom(s.x,s.y,s.w,s.h);
+         this.current.zoom.x = s.x;
+         this.current.zoom.y = s.y;
+         this.current.zoom.w = s.w;
+         this.current.zoom.h = s.h;
+         if ((last_tx != this.current.image.tx) && (last_ty != this.current.image.ty) && ( last_zoom != this.current.image.zoom)) {
+             this.items.push({ e: $('#'+this.params.name+'-image'), 
+                               p: {scale:this.current.image.zoom, marginLeft: this.current.image.tx+"px",marginTop:this.current.image.ty+"px"}, options: { delay:0, duration: speed,  easing:'easeInSine',sequenceQueue:queue } });
+             this.maskWindow(s,false);
          }
 
-       }
-       function changeImage(seq,image,speed) {
-           if (speed == undefined) {
-            speed=50;
-           }
-           console.log('viewport_x='+viewport_x+', viewport_y='+viewport_y);
-           seq.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { delay:delay, duration: speed, easing:'easeOutQuart', complete: showImageCallback(image) } });
-           delay = 0;
-       }
-       function showText(s) {
+       };
+       
+       
+
+       Sequence.prototype.changeImage = function (s) {
+           speed = ((s.speed == undefined) ? 50 : s.speed);
+           this.items.push({ e: $('.cursor'), p: {left:(this.current.viewport.x)+'px',top:(this.current.viewport.y)+'px'}, options: { delay:0, duration: speed, easing:'easeOutQuart', complete: function () {
+                  console.log('showImage '+s.image);
+                  $('#'+this.params.name+'-image').attr('src',s.image); }} });
+       };
+       
+       Sequence.prototype.changeText = function (s) {
            if (s.type === 'markdown') {
                var content = converter.makeHtml(s.content);
            } else {
@@ -204,81 +251,69 @@ window.tutorial = (function () {
                var transition = "transition.slideUpBigIn";
            }
            
-           $('#info').velocity({ opacity: 0 }, { duration:750, complete: function () {              
-               $('#info').html(content);
-               if (s.background) $('#info').css('background-color',s.background)
-               else $('#info').css('background-color','')
-              
-            }})
-           .velocity(transition); //, { display: null, duration: 1250, stagger: 40  });
-       }
-       function showTextCallback(s) {
-           return function() { showText(s);};
-       }
-       function changeText(seq,s,speed) {
-           if (speed == undefined) {
-            speed=50;
-           }
-           
-           seq.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { duration: speed, easing:'easeOutQuart', complete: showTextCallback(s) } });
-       }
-       function showMessage(seq,s,speed) {
-       }          
+           this.items.push({ e: $('#'+this.params.name+'-info'), p: { opacity:0 }, 
+                             options: { duration: 750, 
+                                        easing:'easeOutQuart', 
+                                        complete: function () {              
+                                               $('#'+this.params.name+'-info').html(content);
+                                               if (s.background) $('#'+this.params.name+'-info').css('background-color',s.background)
+                                               else $('#'+this.params.name+'-info').css('background-color','')
+                                        }
+                                       }
+                           });
+           this.items.push({ e: $('#'+this.params.name+'-info'), p: transition});
+       };
        
-       function moveCursor(seq,nx,ny,speed,complete) {
-           if (speed == undefined) {
-            speed=1500;
-           }
-           mouse_x = nx;
-           mouse_y = ny;
-           if (nx != 0 || ny != 0) {
-               console.log('udateCursor '+nx+','+ny);
-               updateCursor(nx,ny);
+       Sequence.prototype.showMessage = function (s) {
+       };         
+       
+       Sequence.prototype.moveCursor = function (s) {
+           speed = ((s.speed == undefined) ? 50 : s.speed);
+           this.current.mouse.x = s.x;
+           this.current.mouse.y = s.y;
+           if (s.x != 0 || s.y != 0) {
+               this.updateCursor(s.x,s.y);
                
-               seq.push({ e: $('.cursor'), p: {left:(viewport_x)+'px',top:(viewport_y)+'px'}, options: { delay:delay, duration: speed, easing:'easeOutQuart', complete: complete } });
-               seq.push({e: $('.click'), p:{left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { delay:delay, duration:0, sequenceQueue: true }});
+               this.items.push({ e: $('#'+this.params.name+'-cursor'), p: {left:(this.current.viewport.x)+'px',top:(this.current.viewport.y)+'px'}, options: { delay:0, duration: speed, easing:'easeOutQuart'} });
+               this.items.push({e: $('#'+this.params.name+'-click'), p:{left:(this.current.viewport.x-this.params.clickcircle/4)+'px',top:(this.current.viewport.y-this.params.clickcircle/4)+'px',width:(this.params.clickcircle/2)+'px',height:(this.params.clickcircle/2)+'px'}, options: { delay:0, duration:0, sequenceQueue: true }});
 
            }
-           delay = 0;
-       }
-       function startClick(seq,btn,repeat,full,speed) {
-           if (speed == undefined) {
-            speed=400;
-           }
-           console.log(repeat);
-           if (full == undefined) {
-            full=true;
-           }
-           if (btn == 'Left') {
+       };
+       
+       Sequence.prototype.startClick = function (s,full) {
+           speed = ((s.speed == undefined) ? 400 : s.speed);
+           full = ((full == undefined) ? true : full)
+
+           if (s.button == 'Left') {
             var color = 'green';
-           } else if (btn == 'Right') {
+           } else if (s.button == 'Right') {
             var color = 'yellow';
-           } else if (btn == 'Middle') {
+           } else if (s.button == 'Middle') {
             var color = 'red';
            }
            console.log(color);
-           for (r=0;r<repeat;r++) {
-               seq.push({e: $('.click'), p:{ left:(viewport_x-clickcircle/2)+'px',top:(viewport_y-clickcircle/2)+'px',width:(clickcircle)+'px',height:(clickcircle)+'px'}, options: { delay:delay, duration:0, complete: function () { $('.click').css('border-color',color).css('visibility','visible');} }});
-               seq.push({ e: $('.click'), p: {left:(viewport_x-clickcircle/4)+'px',top:(viewport_y-clickcircle/4)+'px',width:(clickcircle/2)+'px',height:(clickcircle/2)+'px'}, options: { duration: speed/repeat}});
+           for (r=0;r<s.count;r++) {
+               this.items.push({e: $('#'+this.params.name+'-click'), p:{ left:(this.current.viewport.x-this.params.clickcircle/2)+'px',top:(this.current.viewport.y-this.params.clickcircle/2)+'px',width:(this.params.clickcircle)+'px',height:(this.params.clickcircle)+'px'}, options: { delay:0, duration:0, complete: function () { $('#'+this.params.name+'-click').css('border-color',color).css('visibility','visible');} }});
+               this.items.push({ e: $('#'+this.params.name+'-click'), p: {left:(this.current.viewport.x-this.params.clickcircle/4)+'px',top:(this.current.viewport.y-this.params.clickcircle/4)+'px',width:(this.params.clickcircle/2)+'px',height:(this.params.clickcircle/2)+'px'}, options: { duration: speed/s.count}});
            }
            if (full) {
-               seq.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed/repeat, complete: function () { $('.click').css('visibility','hidden');}}});
+               this.items.push({ e: $('#'+this.params.name+'-click'), p: {left:(this.current.viewport.x-2)+'px',top:(this.current.viewport.y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed/s.count, complete: function () { $('#'+this.params.name+'-click').css('visibility','hidden');}}});
            }
-           delay = 0;
 
-       }
+       };
        
-       function endClick(seq,speed) {
-           if (speed == undefined) {
-              speed=400;
-           }
-           seq.push({ e: $('.click'), p: {left:(viewport_x-2)+'px',top:(viewport_y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed, complete: function () { $('.click').css('visibility','hidden');}}});
-       }
-      function addStepTitle(seq,title,speed) {
-       if (speed == undefined) speed = 500;
-       seq.push({ e: $('#step'), p: 'transition.slideUpOut', options:{ duration:500, complete: function () {
-                   $('#step').html(title); }}});
-       seq.push({ e: $('#step'), p: 'transition.slideUpIn',options: { duration: speed }});
+       Sequence.prototype.endClick = function (s) {
+           speed = ((s.speed == undefined) ? 400 : s.speed);
+           
+           this.items.push({ e: $('#'+this.params.name+'-click'), p: {left:(this.current.viewport.x-2)+'px',top:(this.current.viewport.y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed, complete: function () { $('#'+this.params.name+'-click').css('visibility','hidden');}}});
+       };
+       
+     Sequence.prototype.addStepTitle =  function (s,speed) {
+         speed = ((s.speed == undefined) ? 400 : s.speed);
+
+         this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpOut', options:{ duration:500, complete: function () {
+                   $('#'+this.params.name+'-step').html(s.title); }}});
+         this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpIn',options: { duration: speed }});
    }
 
 
@@ -289,8 +324,8 @@ window.tutorial = (function () {
 
     
     var tutorial = {
-        init: function (tuto) {
-            return new Tutorial(tuto);
+        Tutorial: function (params) {
+            return new Tutorial(params);
         }, 
     };
     return tutorial;
