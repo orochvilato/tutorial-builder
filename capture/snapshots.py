@@ -194,6 +194,7 @@ class Snapshot():
         steps = []
         prevstep = []
         scenario = dict(name=self.params.title,steps=[])
+        currentzoom = []
         for i,tlelt in enumerate(sorttl):
             if (tlelt['event'].type!='timed'):
                 t = tlelt['timestamp']-self.starttime
@@ -205,33 +206,52 @@ class Snapshot():
                             save(self.lastevt)
                     steps[-1]['image'] = self.imagesnames[self.lastevt['iname']]
                     self.last = self.lastevt
-                    
-                if 'Press' in tlelt['event'].type and count==0: 
-                    steps.append(dict(action='click',
-                                     button=tlelt['event'].button,
-                                     x=tlelt['event'].x,
-                                     y=tlelt['event'].y,
-                                     count=tlelt['event'].count,
-                                     active=tlelt['active'],
-                                     zoom=1))
-                    count = tlelt['event'].count
-                if 'Release' in tlelt['event'].type:
-                    count -= 1
-                    
+
                 if compare(tlelt,self.last):
                     if not tlelt['iname'] in self.imagesnames.keys():
                         save(tlelt)
-                    steps.append(dict(action='loadImage',image=self.imagesnames[tlelt['iname']]))
-
+                    showimage = True
                     self.last = tlelt
+                else:
+                    showimage = False    
+                    
+                if 'Press' in tlelt['event'].type and count==0: 
+                    if (tlelt['active'] != currentzoom):
+                        steps.append(dict(action='zoom',
+                                          x=tlelt['active']['x'],
+                                          y=tlelt['active']['y'],
+                                          w=tlelt['active']['w'],
+                                          h=tlelt['active']['h'],
+                                          mask=True
+                                    ))
+                    step = dict(action='click',
+                                     button=tlelt['event'].button,
+                                     x=tlelt['event'].x,
+                                     y=tlelt['event'].y,
+                                     count=tlelt['event'].count
+                                     )
+                    if showimage:
+                        step['image'] = self.imagesnames[tlelt['iname']];
+
+                    steps.append(step)
+                    count = tlelt['event'].count
+
+                if 'Release' in tlelt['event'].type:
+                    count -= 1
+                    
+                if showimage:
+                    steps.append(dict(action='loadImage',image=self.imagesnames[tlelt['iname']]))
+                
+
                 
             self.lastevt = tlelt
 
         if compare(self.last,self.lastevt):
             save(self.lastevt)
-            steps.append(dict(action='stop',image=self.imagesnames[self.lastevt['iname']]))
+        steps.append(dict(action='step',image=self.imagesnames[self.lastevt['iname']]))
 
         scenario['steps'] = steps
+        scenario['image'] = dict(name=steps[0]['image'])
         import json
         js = "var sce=%s;" % json.dumps(scenario,sort_keys=True, indent=4, separators=(',', ': '))
         with open("data.js",'w') as f:

@@ -87,18 +87,18 @@ window.tutorial = (function () {
                    this.setCurrentStep(currentStep);
                    myStep = {'i':this.items.length, 'image':s.image,'title':s.title};
                    this.addStepTitle(s);
+                   if (s.message != undefined) { this.showMessage(s.message);}
                }
 
                if (s.action === 'loadImage' || s.action === 'step') {
                    this.changeImage(s);
                }
                if (s.action === 'click') {
-                   //this.maskWindow({ 'x':s.active.x,'y':s.active.y,'h':s.active.h,'w':s.active.w});
-                   this.zoomWindow(s.active);
                    this.moveCursor(s);
+                   if (s.image) this.changeImage(s);
                    this.startClick(s,true);
                }
-               if (s.action === 'zoomTo') {
+               if (s.action === 'zoom') {
                    this.zoomWindow(s);
                }
                if (s.action === 'text') {
@@ -168,7 +168,7 @@ window.tutorial = (function () {
        };
        
        Sequence.prototype.maskWindow = function (s,queue) {
-           speed = ((s.speed == undefined) ? 1500 : s.speed);
+           speed = ((s.speed == undefined) ? 900 : s.speed);
            queue = ((queue == undefined) ? true : queue);
            this.updateMask(s.x,s.y,s.w,s.h);
            this.current.mask.x = s.x;
@@ -232,7 +232,7 @@ window.tutorial = (function () {
        };
        
        Sequence.prototype.zoomWindow = function (s,queue) {
-           speed = ((s.speed == undefined) ? 1500 : s.speed);
+           speed = ((s.speed == undefined) ? 900 : s.speed);
            queue = ((queue == undefined) ? true : queue);
 
          last_tx = this.current.image.tx;
@@ -294,8 +294,28 @@ window.tutorial = (function () {
                            });
            this.items.push({ e: $('#'+this.params.name+'-info'), p: transition});
        };
+       function showMessage_callback(msg_id,content,cssclass)
+       {
+           return function () { 
+               if (cssclass != undefined) $(msg_id).addClass(cssclass);
+               $(msg_id).html(content);
+           }
+       }
+       Sequence.prototype.showMessage = function (m) {
+           duration = ((m.duration == undefined) ? 3000 : duration)
+           content = ((m.type == 'markdown') ? converter.makeHtml(m.content) : m.content)
+           transitionin = ((m.transitionin == undefined) ? "transition.bounceUpIn" : m.transitionin)
+           transitionout = ((m.transitionout == undefined) ? "transition.bounceDownOut" : m.transitionout)
+           
+           this.items.push({ e: $('#'+this.params.name+'-msg'), p: { opacity:0 }, 
+                             options: { duration: 0, 
+                                        complete: showMessage_callback('#'+this.params.name+'-msg',content,m.cssclass)
+                                      }
+                           });
+           this.items.push({ e: $('#'+this.params.name+'-msg'), p: transitionin });
+           this.items.push({ e: $('#'+this.params.name+'-msg'), p: transitionout, options: { delay:duration} });
+           
        
-       Sequence.prototype.showMessage = function (s) {
        };         
        
        Sequence.prototype.moveCursor = function (s) {
@@ -349,7 +369,7 @@ window.tutorial = (function () {
      Sequence.prototype.addStepTitle =  function (s,speed) {
          speed = ((s.speed == undefined) ? 400 : s.speed);
          console.log('#'+this.params.name+'-step');
-         this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpOut', options:{ duration:500, complete: addStepTitle_callback('#'+this.params.name+'-step',s)
+         this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpOut', options:{ sequenceQueue:false, duration:500, complete: addStepTitle_callback('#'+this.params.name+'-step',s)
                     }});
          this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpIn',options: { duration: speed }});
    }
