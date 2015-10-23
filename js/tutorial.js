@@ -15,6 +15,50 @@ window.tutorial = (function () {
         image_elt.onload = ivp_callback(this);
         image_elt.src = this.image.name;
     }
+    Tutorial.prototype.jump = function () {
+        tutoid = '#'+this.params.name+'-';
+        $(tutoid+'leftmask').velocity('stop');
+        $(tutoid+'rightmask').velocity('stop');
+        $(tutoid+'topmask').velocity('stop');
+        $(tutoid+'bottommask').velocity('stop');
+        $(tutoid+'image').velocity('stop');
+        $(tutoid+'cursor').velocity('stop');
+        $(tutoid+'step').velocity('stop');
+        $(tutoid+'click').velocity('stop').css('visibility','hidden');
+        $(tutoid+'info').velocity('stop').css('visibility','hidden');
+        $(tutoid+'msg').velocity('stop').css('visibility','hidden');
+       
+       playon = false;
+       if (force == undefined) {
+           force = false;
+       }
+       
+       if (force || (step<mySteps.length && step>=0 && step != currentStep)) {
+               newSequence = [];
+               currentStep = step;
+               initStep(step);
+               $.Velocity.RunSequence(newSequence);
+       }
+    }
+    Tutorial.prototype.play = function () {
+       console.log(this.sequence.current.step);
+
+       if (this.sequence.current.playon == true) {
+          jumpStep(currentStep,true);
+          return
+       }
+       playon = true;
+       newSequence = [];
+       
+       start = mySteps[currentStep]['i'];
+       //var end = mySteps[currentStep+1]['i'];
+       var end = fullSequence.length;
+
+       for (i = start; i<end;i++) {
+           newSequence.push(fullSequence[i]);
+       }
+       $.Velocity.RunSequence(newSequence);
+    }
     function ivp_callback(tutorial) {
         return function() { initViewport(tutorial);}
     }
@@ -70,7 +114,8 @@ window.tutorial = (function () {
                          'zoom':{},
                          'mouse':{},
                          'viewport': {},
-                         'step': {},
+                         'running':false,
+                         'step': 0,
                          'mask':{'left':{},'right':{},'top':{},'bottom':{}}
                        };
     }            

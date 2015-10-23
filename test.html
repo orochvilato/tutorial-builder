@@ -495,8 +495,9 @@ $(document).ready(function(){
     $('#start').click(function() {
         jumpStep(0);
     });
-    $('#next').click(function() {
-        jumpStep(currentStep+1);
+    $('#tuto-next').click(function() {
+        //jumpStep(currentStep+1);
+        T.play();
     });
     $('#previous').click(function() {
         jumpStep(currentStep-1);
