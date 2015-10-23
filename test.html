@@ -102,7 +102,7 @@
 <script src="js/tutorial.js"></script>
 <script src="data.js"></script>
 <script> 
-
+var T;
 var converter = new showdown.Converter();
 var clickcircle = 50;
 var step = 0;
@@ -488,8 +488,9 @@ $(document).ready(function(){
     //});
     $("#im1").attr('src',sce['steps'][0]['image']);
    
-    $("#play").click(function(){
-        play();
+    $("#tuto-play").click(function(){
+        //play();
+        $.Velocity.RunSequence(T.sequence.items);
     });   
     $('#start').click(function() {
         jumpStep(0);

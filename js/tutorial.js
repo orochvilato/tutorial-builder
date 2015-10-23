@@ -26,11 +26,14 @@ window.tutorial = (function () {
         current.image.h = document.getElementById(tutorial.params.name+'-image').naturalHeight;
         current.image.tx = 0;
         current.image.ty = 0;
+        current.image.x = 300;
+        current.image.y = 200;
         viewport_elt = document.getElementById(tutorial.params.name+'-viewport');
         if (viewport_elt.clientWidth != current.viewport.w) {
             current.viewport.w = viewport_elt.clientWidth;
             current.viewport.h = viewport_elt.clientHeight;
-            $('#'+tutorial.params.name+'-leftmask').attr('width',current.viewport.w).attr('height',current.viewport.h);
+            console.log('init',current.viewport);
+            $('#'+tutorial.params.name+'-mask').attr('width',current.viewport.w).attr('height',current.viewport.h);
             $('#'+tutorial.params.name+'-leftmask').attr('x',0).attr('y',0).attr('width',0).attr('height',current.viewport.h);
             $('#'+tutorial.params.name+'-rightmask').attr('x',current.viewport.w).attr('y',0).attr('width',0).attr('height',current.viewport.h);
             $('#'+tutorial.params.name+'-topmask').attr('x',0).attr('y',0).attr('width',current.viewport.w).attr('height',0);
@@ -52,7 +55,6 @@ window.tutorial = (function () {
         if (tutorial.sequence.items.length == 0) {
             tutorial.sequence.init(tutorial.params.steps);
             
-            $.Velocity.RunSequence(tutorial.sequence.items);
         }
 
 
@@ -91,7 +93,7 @@ window.tutorial = (function () {
                    this.changeImage(s);
                }
                if (s.action === 'click') {
-                   this.maskWindow({ 'x':s.active.x,'y':s.active.y,'h':s.active.h,'w':s.active.w});
+                   //this.maskWindow({ 'x':s.active.x,'y':s.active.y,'h':s.active.h,'w':s.active.w});
                    this.zoomWindow(s.active);
                    this.moveCursor(s);
                    this.startClick(s,true);
@@ -106,9 +108,9 @@ window.tutorial = (function () {
                    delay = s.time;
                }
                if (s.action === 'step') {
-                   myStep['zoom']={'x':zoom_x,'y':zoom_y, 'w':zoom_w,'h':zoom_h};
-                   myStep['mask']={'x':mask_x, 'y':mask_y, 'w':mask_w, 'h':mask_h};
-                   myStep['mouse'] = {'x':mouse_x,'y':mouse_y};
+                   myStep['zoom']={'x':this.current.zoom.x,'y':this.current.zoom.y, 'w':this.current.zoom.w,'h':this.current.zoom.h};
+                   myStep['mask']={'x':this.current.mask.x, 'y':this.current.mask.y, 'w':this.current.mask.w, 'h':this.current.mask.h};
+                   myStep['mouse'] = {'x':this.current.mouse.x,'y':this.current.mouse.y};
                    this.steps.push(myStep);
                }
                if (s.wait) delay = s.wait;
@@ -134,7 +136,9 @@ window.tutorial = (function () {
        
        Sequence.prototype.updateCursor = function (x,y) {
            this.current.image.x = x;
-           this.current.image.x = y;
+           this.current.image.y = y;
+           this.current.mouse.x = x;
+           this.current.mouse.y = y;
            this.current.viewport.x = (x / this.current.image.w) * this.current.viewport.w * this.current.image.zoom - this.current.viewport.x0;
            this.current.viewport.y = (y / this.current.image.h) * this.current.viewport.h * this.current.image.zoom - this.current.viewport.y0;
        };
@@ -146,34 +150,35 @@ window.tutorial = (function () {
            v_h = (h / this.current.image.h) * this.current.viewport.h*this.current.image.zoom;         
     
            this.current.mask.left.w = ((v_x < 0) ? 0 : v_x);
-           rm_w = viewport_w-v_x-v_w;
 
+           rm_w = this.current.viewport.w-v_x-v_w;
            this.current.mask.right.w = ((rm_w < 0) ? 0 : rm_w);
+
            rm_x = v_x+v_w;
            this.current.mask.right.x = ((rm_x < 0) ? 0 : rm_x);
 
            this.current.mask.top.h = ((v_y < 0) ? 0 : v_y);
 
-           bm_h = viewport_h-v_y-v_h;
+           bm_h = this.current.viewport.h-v_y-v_h;
            this.current.mask.bottom.h = ((bm_h < 0) ? 0 : bm_h);
+
            bm_y = v_y+v_h;
-           this.current.mask.bottom_y = ((bm_y <<0) ? 0 : bm_y);
+           this.current.mask.bottom.y = ((bm_y < 0) ? 0 : bm_y);
            
        };
        
        Sequence.prototype.maskWindow = function (s,queue) {
            speed = ((s.speed == undefined) ? 1500 : s.speed);
            queue = ((queue == undefined) ? true : queue);
-           console.log('maskWindow',s);
            this.updateMask(s.x,s.y,s.w,s.h);
            this.current.mask.x = s.x;
            this.current.mask.y = s.y;
            this.current.mask.w = s.w;
            this.current.mask.h = s.h;
-           this.items.push({ e: $('#'+this.params.name+'-leftmask'), p: {width: this.current.mask.left.w}, options: { sequenceQueue: queue, delay:delay, duration: speed,  easing:'easeInSine' } });
-           this.items.push({ e: $('#'+this.params.name+'-rightmask'), p: {width: this.current.mask.right.w,x:this.current.mask.right.x}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
-           this.items.push({ e: $('#'+this.params.name+'-topmask'), p: {height: this.current.mask.top.h}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
-           this.items.push({ e: $('#'+this.params.name+'-bottommask'), p: {height: this.current.mask.bottom.h, y: this.current.mask.bottom.y}, options: { delay:delay, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           this.items.push({ e: $('#'+this.params.name+'-leftmask'), p: {width: this.current.mask.left.w}, options: { sequenceQueue: queue, delay:0, duration: speed,  easing:'easeInSine' } });
+           this.items.push({ e: $('#'+this.params.name+'-rightmask'), p: {width: this.current.mask.right.w,x:this.current.mask.right.x}, options: { delay:0, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           this.items.push({ e: $('#'+this.params.name+'-topmask'), p: {height: this.current.mask.top.h}, options: { delay:0, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
+           this.items.push({ e: $('#'+this.params.name+'-bottommask'), p: {height: this.current.mask.bottom.h, y: this.current.mask.bottom.y}, options: { delay:0, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
 
        };
        
