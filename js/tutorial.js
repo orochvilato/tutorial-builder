@@ -8,15 +8,24 @@ window.tutorial = (function () {
         this.image = params.image;
         this.sequence = new Sequence();
         this.sequence.current.image = params.image;
+        this.sequence.params.name = params.name;
+        globalparams[params.name] = this
+        
         image_elt = document.getElementById(this.params.name+'-image')
-        image_elt.onload = function() { initViewport(this); };
+        image_elt.onload = ivp_callback(this);
         image_elt.src = this.image.name;
     }
+    function ivp_callback(tutorial) {
+        return function() { initViewport(tutorial);}
+    }
     function initViewport(tutorial) {
+        console.log(tutorial);
         current = tutorial.sequence.current;
 
         current.image.w = document.getElementById(tutorial.params.name+'-image').naturalWidth;
         current.image.h = document.getElementById(tutorial.params.name+'-image').naturalHeight;
+        current.image.tx = 0;
+        current.image.ty = 0;
         viewport_elt = document.getElementById(tutorial.params.name+'-viewport');
         if (viewport_elt.clientWidth != current.viewport.w) {
             current.viewport.w = viewport_elt.clientWidth;
@@ -39,8 +48,13 @@ window.tutorial = (function () {
             current.mouse.y = 200;
         }
         $('#'+tutorial.params.name+'-viewport').css('height',current.viewport.h);
-        tutorial.sequence.init(params.steps);
         console.log('viewport_w='+current.viewport.w+', viewport_h='+current.viewport.h);
+        if (tutorial.sequence.items.length == 0) {
+            tutorial.sequence.init(tutorial.params.steps);
+            
+            $.Velocity.RunSequence(tutorial.sequence.items);
+        }
+
 
     }
     function Sequence() {
@@ -77,8 +91,8 @@ window.tutorial = (function () {
                    this.changeImage(s);
                }
                if (s.action === 'click') {
-                   this.maskWindow(s);
-                   this.zoomWindow(s);
+                   this.maskWindow({ 'x':s.active.x,'y':s.active.y,'h':s.active.h,'w':s.active.w});
+                   this.zoomWindow(s.active);
                    this.moveCursor(s);
                    this.startClick(s,true);
                }
@@ -108,12 +122,14 @@ window.tutorial = (function () {
 
        };
        
+       function setCurrentStep_callback(currentobj,value) {
+           console.log('setCurrentStep_callback',currentobj,value);
+           return function () { currentobj.step = value };
+       }
        Sequence.prototype.setCurrentStep = function (value) {
           console.log('value='+value);
-          this.items.push({ e: $('#'+this.params.name+'-step'), p:{opacity:1}, options:{ duration:0, complete: function () {
-             this.current.step = value;
-             console.log("currentStep :"+this.current.step);
-          }}});
+          this.items.push({ e: $('#'+this.params.name+'-step'), p:{opacity:1}, options:{ duration:0, complete: 
+             setCurrentStep_callback(this.current,value)}});
        };
        
        Sequence.prototype.updateCursor = function (x,y) {
@@ -148,7 +164,7 @@ window.tutorial = (function () {
        Sequence.prototype.maskWindow = function (s,queue) {
            speed = ((s.speed == undefined) ? 1500 : s.speed);
            queue = ((queue == undefined) ? true : queue);
-
+           console.log('maskWindow',s);
            this.updateMask(s.x,s.y,s.w,s.h);
            this.current.mask.x = s.x;
            this.current.mask.y = s.y;
@@ -162,16 +178,16 @@ window.tutorial = (function () {
        };
        
        Sequence.prototype.updateZoom = function (_x,_y,_w,_h) {
-       
+           console.log(this);
            x = _x - _w * 0.01;
            y = _y - _h * 0.01;
            w = _w * 1.02;
            h = _h * 1.02;
          
-           var vx = x / im_w * this.current.viewport.w;
-           var vy = y / im_h * this.current.viewport.h;
-           var vw = w / im_w * this.current.viewport.w;
-           var vh = h / im_h * this.current.viewport.h;
+           var vx = x / this.current.image.w * this.current.viewport.w;
+           var vy = y / this.current.image.h * this.current.viewport.h;
+           var vw = w / this.current.image.w * this.current.viewport.w;
+           var vh = h / this.current.image.h * this.current.viewport.h;
 
            var zw = this.current.viewport.w/vw;
            var zh = this.current.viewport.h/vh;
@@ -191,10 +207,10 @@ window.tutorial = (function () {
          // Pour centrer la fenetre
          tx0 = this.current.viewport.w * (z-1) / 2;
          ty0 = this.current.viewport.h * (z-1) / 2;
-         cw = (viewport_w - vw * z) /2 - vx*z;
+         cw = (this.current.viewport.w - vw * z) /2 - vx*z;
          if (cw>0) cw=0;
          if (cw<-2*tx0) cw = -2*tx0;
-         ch = (viewport_h - vh * z) /2 - vy*z;
+         ch = (this.current.viewport.h - vh * z) /2 - vy*z;
          if (ch>0) ch=0;
          console.log('cw='+cw+', ch='+ch);
        
@@ -231,14 +247,28 @@ window.tutorial = (function () {
        };
        
        
-
+       function changeImage_callback(img_id,s) {
+           return function() {
+               console.log('changeImage_callback ',img_id,s);
+               $(img_id).attr('src',s.image);
+           }
+       }
        Sequence.prototype.changeImage = function (s) {
            speed = ((s.speed == undefined) ? 50 : s.speed);
-           this.items.push({ e: $('.cursor'), p: {left:(this.current.viewport.x)+'px',top:(this.current.viewport.y)+'px'}, options: { delay:0, duration: speed, easing:'easeOutQuart', complete: function () {
-                  console.log('showImage '+s.image);
-                  $('#'+this.params.name+'-image').attr('src',s.image); }} });
-       };
+           this.items.push({ e: $('#'+this.params.name+'-cursor'), p: {left:(this.current.viewport.x)+'px',top:(this.current.viewport.y)+'px'}, options: { delay:0, duration: speed, easing:'easeOutQuart', complete: changeImage_callback('#'+this.params.name+'-image',s) } });
        
+       };
+       function changeText_callback(info_id,s) {
+           if (s.type === 'markdown') {
+               var content = converter.makeHtml(s.content);
+           } else {
+               var content = s.content;
+           }
+           background = ((s.background == undefined) ? '' : s.background)
+           return function () {
+               $(info_id).html(content).css('background-color',background);
+           }
+       }
        Sequence.prototype.changeText = function (s) {
            if (s.type === 'markdown') {
                var content = converter.makeHtml(s.content);
@@ -254,11 +284,7 @@ window.tutorial = (function () {
            this.items.push({ e: $('#'+this.params.name+'-info'), p: { opacity:0 }, 
                              options: { duration: 750, 
                                         easing:'easeOutQuart', 
-                                        complete: function () {              
-                                               $('#'+this.params.name+'-info').html(content);
-                                               if (s.background) $('#'+this.params.name+'-info').css('background-color',s.background)
-                                               else $('#'+this.params.name+'-info').css('background-color','')
-                                        }
+                                        complete: changeText_callback('#'+this.params.name+'-info',s)
                                        }
                            });
            this.items.push({ e: $('#'+this.params.name+'-info'), p: transition});
@@ -268,7 +294,7 @@ window.tutorial = (function () {
        };         
        
        Sequence.prototype.moveCursor = function (s) {
-           speed = ((s.speed == undefined) ? 50 : s.speed);
+           speed = ((s.speed == undefined) ? 1000 : s.speed);
            this.current.mouse.x = s.x;
            this.current.mouse.y = s.y;
            if (s.x != 0 || s.y != 0) {
@@ -279,11 +305,7 @@ window.tutorial = (function () {
 
            }
        };
-       
-       Sequence.prototype.startClick = function (s,full) {
-           speed = ((s.speed == undefined) ? 400 : s.speed);
-           full = ((full == undefined) ? true : full)
-
+       function startClick_callback(click_id,s,visibility) {
            if (s.button == 'Left') {
             var color = 'green';
            } else if (s.button == 'Right') {
@@ -292,12 +314,20 @@ window.tutorial = (function () {
             var color = 'red';
            }
            console.log(color);
+           return function () {
+               $(click_id).css('border-color',color).css('visibility',visibility);
+           }
+       }
+       Sequence.prototype.startClick = function (s,full) {
+           speed = ((s.speed == undefined) ? 100 : s.speed);
+           full = ((full == undefined) ? true : full)
+
            for (r=0;r<s.count;r++) {
-               this.items.push({e: $('#'+this.params.name+'-click'), p:{ left:(this.current.viewport.x-this.params.clickcircle/2)+'px',top:(this.current.viewport.y-this.params.clickcircle/2)+'px',width:(this.params.clickcircle)+'px',height:(this.params.clickcircle)+'px'}, options: { delay:0, duration:0, complete: function () { $('#'+this.params.name+'-click').css('border-color',color).css('visibility','visible');} }});
+               this.items.push({e: $('#'+this.params.name+'-click'), p:{ left:(this.current.viewport.x-this.params.clickcircle/2)+'px',top:(this.current.viewport.y-this.params.clickcircle/2)+'px',width:(this.params.clickcircle)+'px',height:(this.params.clickcircle)+'px'}, options: { delay:0, duration:0, complete: startClick_callback('#'+this.params.name+'-click',s,'visible')  }});
                this.items.push({ e: $('#'+this.params.name+'-click'), p: {left:(this.current.viewport.x-this.params.clickcircle/4)+'px',top:(this.current.viewport.y-this.params.clickcircle/4)+'px',width:(this.params.clickcircle/2)+'px',height:(this.params.clickcircle/2)+'px'}, options: { duration: speed/s.count}});
            }
            if (full) {
-               this.items.push({ e: $('#'+this.params.name+'-click'), p: {left:(this.current.viewport.x-2)+'px',top:(this.current.viewport.y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed/s.count, complete: function () { $('#'+this.params.name+'-click').css('visibility','hidden');}}});
+               this.items.push({ e: $('#'+this.params.name+'-click'), p: {left:(this.current.viewport.x-2)+'px',top:(this.current.viewport.y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed/s.count, complete:startClick_callback('#'+this.params.name+'-click',s,'hidden') }});
            }
 
        };
@@ -307,12 +337,15 @@ window.tutorial = (function () {
            
            this.items.push({ e: $('#'+this.params.name+'-click'), p: {left:(this.current.viewport.x-2)+'px',top:(this.current.viewport.y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed, complete: function () { $('#'+this.params.name+'-click').css('visibility','hidden');}}});
        };
-       
+     
+     function addStepTitle_callback(step_id,s) {
+        return function () { $(step_id).html(s.title);}
+     }  
      Sequence.prototype.addStepTitle =  function (s,speed) {
          speed = ((s.speed == undefined) ? 400 : s.speed);
-
-         this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpOut', options:{ duration:500, complete: function () {
-                   $('#'+this.params.name+'-step').html(s.title); }}});
+         console.log('#'+this.params.name+'-step');
+         this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpOut', options:{ duration:500, complete: addStepTitle_callback('#'+this.params.name+'-step',s)
+                    }});
          this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpIn',options: { duration: speed }});
    }
 
