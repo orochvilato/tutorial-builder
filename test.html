@@ -493,18 +493,19 @@ $(document).ready(function(){
     $("#im1").attr('src',sce['steps'][0]['image']);
    
     $("#tuto-play").click(function(){
-        //play();
-        $.Velocity.RunSequence(T.sequence.items);
+        T.play();
     });   
     $('#start').click(function() {
         jumpStep(0);
     });
     $('#tuto-next').click(function() {
-        //jumpStep(currentStep+1);
-        T.play();
+         T.sequence.current.step++;
+         T.initFromContext(T.params.steps[T.sequence.current.step].context);
+         console.log("TEST!!!!",T.params);
     });
-    $('#previous').click(function() {
-        jumpStep(currentStep-1);
+    $('#tuto-previous').click(function() {
+        T.sequence.current.step--;
+        T.initFromContext(T.params.steps[T.sequence.current.step].context);
     });
    
    
@@ -572,10 +573,10 @@ $(document).ready(function(){
 <div class="col-md-12">
 
 <div class="btn-group" style="display:block;">
-<button id="tuto-start" type="button" class="btn btn-primary"><i class="fa fa-fast-backward"></i></button>
-<button id="tuto-previous" type="button" class="btn btn-primary"><i class="fa fa-step-backward"></i></button>
-<button id="tuto-play" type="button" class="btn btn-primary"><i class="fa fa-play"></i></button>
-<button id="tuto-next" type="button" class="btn btn-primary"><i class="fa fa-step-forward"></i></button>
+<button id="tuto-start" type="button" class="btn btn-primary btn-sm"><i class="fa fa-fast-backward"></i></button>
+<button id="tuto-previous" type="button" class="btn btn-primary btn-sm"><i class="fa fa-step-backward"></i></button>
+<button id="tuto-play" type="button" class="btn btn-primary btn-sm"><i class="fa fa-play"></i></button>
+<button id="tuto-next" type="button" class="btn btn-primary btn-sm"><i class="fa fa-step-forward"></i></button>
 </div>
 <div style="text-align:center;display:block;"><span id="tuto-step" class="anim" style="font-size:150%;"></span></div>
 </div>

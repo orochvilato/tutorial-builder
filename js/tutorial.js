@@ -6,27 +6,17 @@ window.tutorial = (function () {
     function Tutorial(params) {
         this.params = params;
         this.image = params.image;
-        this.sequence = new Sequence();
-        this.sequence.current.image = params.image;
-        this.sequence.params.name = params.name;
+        this.sequence = new Sequence(params);
         globalparams[params.name] = this
         
         image_elt = document.getElementById(this.params.name+'-image')
         image_elt.onload = ivp_callback(this);
         image_elt.src = this.image.name;
     }
+    
     Tutorial.prototype.jump = function () {
         tutoid = '#'+this.params.name+'-';
-        $(tutoid+'leftmask').velocity('stop');
-        $(tutoid+'rightmask').velocity('stop');
-        $(tutoid+'topmask').velocity('stop');
-        $(tutoid+'bottommask').velocity('stop');
-        $(tutoid+'image').velocity('stop');
-        $(tutoid+'cursor').velocity('stop');
-        $(tutoid+'step').velocity('stop');
-        $(tutoid+'click').velocity('stop').css('visibility','hidden');
-        $(tutoid+'info').velocity('stop').css('visibility','hidden');
-        $(tutoid+'msg').velocity('stop').css('visibility','hidden');
+        
        
        playon = false;
        if (force == undefined) {
@@ -40,24 +30,50 @@ window.tutorial = (function () {
                $.Velocity.RunSequence(newSequence);
        }
     }
+    Tutorial.prototype.initFromContext = function(ctx) {
+        console.log('initFromContext',ctx);
+        tutoid = '#'+this.params.name+'-';
+        $(tutoid+'leftmask').velocity('stop');
+        $(tutoid+'rightmask').velocity('stop');
+        $(tutoid+'topmask').velocity('stop');
+        $(tutoid+'bottommask').velocity('stop');
+        $(tutoid+'image').velocity('stop');
+        $(tutoid+'cursor').velocity('stop');
+        $(tutoid+'step').velocity('stop');
+        $(tutoid+'click').velocity('stop').css('visibility','hidden');
+        $(tutoid+'info').velocity('stop').css('visibility','hidden');
+        $(tutoid+'msg').velocity('stop').css('visibility','hidden');
+ 
+        newSequence = new Sequence(this.params);
+        
+        newSequence.current = JSON.parse(JSON.stringify(ctx));
+        newSequence.changeImage({'image':ctx.image.name, 'speed':0});
+        newSequence.zoomWindow({'x':ctx.zoom.x,'y':ctx.zoom.y,'w':ctx.zoom.w,'h':ctx.zoom.h,'speed':0});
+        newSequence.maskWindow({'x':ctx.mask.x,'y':ctx.mask.y,'w':ctx.mask.w,'h':ctx.mask.h,'speed':0});
+        newSequence.moveCursor({'x':ctx.mouse.x,'y':ctx.mouse.y,'speed':0});
+        
+        $.Velocity.RunSequence(newSequence.items);
+    }
+
     Tutorial.prototype.play = function () {
        console.log(this.sequence.current.step);
-
-       if (this.sequence.current.playon == true) {
-          jumpStep(currentStep,true);
+       ctx = this.params.steps[this.sequence.current.step].context
+       this.initFromContext(ctx);
+       if (this.sequence.current.play == true) {
+          this.sequence.current.play = false;
           return
        }
-       playon = true;
-       newSequence = [];
+       this.sequence.current.play = true;
+       seq = []
        
-       start = mySteps[currentStep]['i'];
+       start = ctx['i'];
        //var end = mySteps[currentStep+1]['i'];
-       var end = fullSequence.length;
+       var end = this.sequence.items.length;
 
        for (i = start; i<end;i++) {
-           newSequence.push(fullSequence[i]);
+           seq.push(this.sequence.items[i]);
        }
-       $.Velocity.RunSequence(newSequence);
+       $.Velocity.RunSequence(seq);
     }
     function ivp_callback(tutorial) {
         return function() { initViewport(tutorial);}
@@ -103,13 +119,11 @@ window.tutorial = (function () {
 
 
     }
-    function Sequence() {
+    function Sequence(params) {
         this.params = {};
         for(var key in globalparams) {
             this.params[key] = globalparams[key];
         }
-        this.items = [];
-        this.steps = [];
         this.current = { 'image':{ 'zoom':1},
                          'zoom':{},
                          'mouse':{},
@@ -118,13 +132,24 @@ window.tutorial = (function () {
                          'step': 0,
                          'mask':{'left':{},'right':{},'top':{},'bottom':{}}
                        };
-    }            
+
+        if (params != undefined) {
+            this.current.image = params.image;
+            this.params.name = params.name;
+        }
+        this.items = [];
+        this.steps = [];
+    }
+    
     Sequence.prototype.init = function (scenario) {
            this.items = [];
            var currentStep = 0;
            for (i=0;i<scenario.length;i++) {
                s = scenario[i];
-               if (s.action === 'step') {
+               this.setCurrentStep(i);
+               s['context'] = JSON.parse(JSON.stringify(this.current));
+               s['context']['i'] = this.items.length;
+               if (s.action === 'stop') {
                    if (s.title == undefined) {
                        s.title = "Step "+(this.steps.length+1);
                    }
@@ -136,6 +161,7 @@ window.tutorial = (function () {
                }
 
                if (s.action === 'loadImage' || s.action === 'step') {
+                   current.image.name = s.image;
                    this.changeImage(s);
                }
                if (s.action === 'click') {
@@ -152,7 +178,7 @@ window.tutorial = (function () {
                if (s.action === 'wait') {
                    delay = s.time;
                }
-               if (s.action === 'step') {
+               if (s.action === 'stop') {
                    myStep['zoom']={'x':this.current.zoom.x,'y':this.current.zoom.y, 'w':this.current.zoom.w,'h':this.current.zoom.h};
                    myStep['mask']={'x':this.current.mask.x, 'y':this.current.mask.y, 'w':this.current.mask.w, 'h':this.current.mask.h};
                    myStep['mouse'] = {'x':this.current.mouse.x,'y':this.current.mouse.y};
@@ -164,9 +190,11 @@ window.tutorial = (function () {
            this.zoomWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h});
            this.changeText({'content':'Fin du tutorial !','type':'markdown'});
        
-           this.steps[currentStep-1]['zoom']={'x':0,'y':0, 'w':this.current.image.w,'h':this.current.image.h};
-           this.steps[currentStep-1]['mask']={'x':0, 'y':0, 'w':this.current.image.w, 'h':this.current.image.h};
-
+           //this.steps[currentStep-1]['zoom']={'x':0,'y':0, 'w':this.current.image.w,'h':this.current.image.h};
+           //this.steps[currentStep-1]['mask']={'x':0, 'y':0, 'w':this.current.image.w, 'h':this.current.image.h};
+           // Ajouter une derniere etape ???
+           console.log(scenario);
+           this.scenario = scenario;
        };
        
        function setCurrentStep_callback(currentobj,value) {
@@ -288,12 +316,13 @@ window.tutorial = (function () {
          this.current.zoom.y = s.y;
          this.current.zoom.w = s.w;
          this.current.zoom.h = s.h;
-         if ((last_tx != this.current.image.tx) && (last_ty != this.current.image.ty) && ( last_zoom != this.current.image.zoom)) {
-             this.items.push({ e: $('#'+this.params.name+'-image'), 
+         if ((last_tx == this.current.image.tx) && (last_ty == this.current.image.ty) && ( last_zoom == this.current.image.zoom))
+             speed = 0 
+         this.items.push({ e: $('#'+this.params.name+'-image'), 
                                p: {scale:this.current.image.zoom, marginLeft: this.current.image.tx+"px",marginTop:this.current.image.ty+"px"}, options: { delay:0, duration: speed,  easing:'easeInSine',sequenceQueue:queue } });
+         if (s.mask == true) {                               
              this.maskWindow(s,false);
          }
-
        };
        
        
@@ -305,7 +334,7 @@ window.tutorial = (function () {
        }
        Sequence.prototype.changeImage = function (s) {
            speed = ((s.speed == undefined) ? 50 : s.speed);
-           this.items.push({ e: $('#'+this.params.name+'-cursor'), p: {left:(this.current.viewport.x)+'px',top:(this.current.viewport.y)+'px'}, options: { delay:0, duration: speed, easing:'easeOutQuart', complete: changeImage_callback('#'+this.params.name+'-image',s) } });
+           this.items.push({ e: $('#'+this.params.name+'-image'), p: {opacity:1}, options: { delay:0, duration: speed, complete: changeImage_callback('#'+this.params.name+'-image',s) } });
        
        };
        function changeText_callback(info_id,s) {
