@@ -12,8 +12,8 @@ window.tutorial = (function () {
         }
 
         this.image = params.image;
+        params['tutorial'] = this;
         this.sequence = new Sequence(params);
-        globalparams[params.name] = this
 
         this.tutoid ='#'+this.params.name+'-';
                 
@@ -48,7 +48,7 @@ window.tutorial = (function () {
 
     }
     
-   
+    
     Tutorial.prototype.initFromContext = function(ctx) {
         console.log('initFromContext',ctx);
         console.log('step',ctx.step);
@@ -79,8 +79,9 @@ window.tutorial = (function () {
     }
     
     Tutorial.prototype.next = function() {
-      if (this.sequence.current.step<this.params.steps.length-1) {
-          this.sequence.current.step++;
+      anchor_i = this.params.steps[this.sequence.current.step].context.anchor;
+      if (anchor_i<this.sequence.anchors.length-1) {
+          this.sequence.current.step = this.sequence.anchors[anchor_i+1].step;
           this.initFromContext(this.params.steps[this.sequence.current.step].context);
       }
     }
@@ -90,12 +91,18 @@ window.tutorial = (function () {
     }
 
     Tutorial.prototype.previous = function() {
-      if (this.sequence.current.step>0) {
-          this.sequence.current.step--;
+      anchor_i = this.params.steps[this.sequence.current.step].context.anchor;
+      if (anchor_i>0) {
+          this.sequence.current.step = this.sequence.anchors[anchor_i].step;
           this.initFromContext(this.params.steps[this.sequence.current.step].context);
       }
     }
-    
+    Tutorial.prototype.jump = function(anchor) {
+        if (anchor>=0 && anchor<this.sequence.anchors.length) {
+            this.sequence.current.step = this.sequence.anchors[anchor].step;
+            this.initFromContext(this.params.steps[this.sequence.current.step].context);
+        }
+    }
     Tutorial.prototype.play = function () {
        step = this.sequence.current.step;
        console.log("play step",step);
@@ -187,26 +194,44 @@ window.tutorial = (function () {
                          'viewport': {},
                          'running':false,
                          'step': 0,
+                         'anchor':0,
                          'mask':{'left':{},'right':{},'top':{},'bottom':{}}
                        };
         this.play = false;
         if (params != undefined) {
             this.current.image = params.image;
             this.params.name = params.name;
+            this.tutorial = params.tutorial;
         }
         this.items = [];
-        this.steps = [];
+        this.anchors = [];
     }
-    
+    function jump_callback(tutorial,anchor) {
+        return function () { tutorial.jump(anchor); }
+    }
     Sequence.prototype.init = function (scenario) {
            this.items = [];
            var currentStep = 0;
            for (i=0;i<scenario.length;i++) {
-               console.log(i,this.current.viewport);
                s = scenario[i];
-               s['context'] = JSON.parse(JSON.stringify(this.current));
+               s.context = JSON.parse(JSON.stringify(this.current));
                
-               s['context']['i'] = this.items.length;
+               s.context.i = this.items.length;
+               if (s.anchor != undefined) {
+                   var li_elt = document.createElement('li');
+                   var a_elt = document.createElement('a');
+                   var a_txt = document.createTextNode(s.anchor.title);
+                   a_elt.href = "#"
+                   a_elt.id = this.params.name+"-anchors-a"+this.anchors.length;
+                   a_elt.anchor = this.anchors.length;
+                   a_elt.appendChild(a_txt);
+                   li_elt.appendChild(a_elt);
+                   a_elt.addEventListener("click", jump_callback(this.tutorial,this.anchors.length), false); 
+                   document.getElementById(this.params.name+"-anchors-ul").appendChild(li_elt);
+                   this.anchors.push({'step':i});
+               }
+               s.context.anchor = this.anchors.length - 1;
+               
                this.setCurrentStep(i);
                if (s.action === 'stop') {
                    if (s.title == undefined) {
