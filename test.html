@@ -495,17 +495,14 @@ $(document).ready(function(){
     $("#tuto-play").click(function(){
         T.play();
     });   
-    $('#start').click(function() {
-        jumpStep(0);
+    $('#tuto-start').click(function() {
+        T.start();
     });
     $('#tuto-next').click(function() {
-         T.sequence.current.step++;
-         T.initFromContext(T.params.steps[T.sequence.current.step].context);
-         console.log("TEST!!!!",T.params);
+        T.next();
     });
     $('#tuto-previous').click(function() {
-        T.sequence.current.step--;
-        T.initFromContext(T.params.steps[T.sequence.current.step].context);
+        T.previous();
     });
    
    

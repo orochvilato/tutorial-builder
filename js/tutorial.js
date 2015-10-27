@@ -5,6 +5,10 @@ window.tutorial = (function () {
     }
     function Tutorial(params) {
         this.params = params;
+        for(var key in globalparams) {
+            this.params[key] = globalparams[key];
+        }
+
         this.image = params.image;
         this.sequence = new Sequence(params);
         globalparams[params.name] = this
@@ -14,24 +18,10 @@ window.tutorial = (function () {
         image_elt.src = this.image.name;
     }
     
-    Tutorial.prototype.jump = function () {
-        tutoid = '#'+this.params.name+'-';
-        
-       
-       playon = false;
-       if (force == undefined) {
-           force = false;
-       }
-       
-       if (force || (step<mySteps.length && step>=0 && step != currentStep)) {
-               newSequence = [];
-               currentStep = step;
-               initStep(step);
-               $.Velocity.RunSequence(newSequence);
-       }
-    }
+   
     Tutorial.prototype.initFromContext = function(ctx) {
         console.log('initFromContext',ctx);
+        console.log('step',ctx.step);
         tutoid = '#'+this.params.name+'-';
         $(tutoid+'leftmask').velocity('stop');
         $(tutoid+'rightmask').velocity('stop');
@@ -45,27 +35,57 @@ window.tutorial = (function () {
         $(tutoid+'msg').velocity('stop').css('visibility','hidden');
  
         newSequence = new Sequence(this.params);
-        
+        this.sequence.play = false;
         newSequence.current = JSON.parse(JSON.stringify(ctx));
+      
+        $(tutoid+'click').css('left',(ctx.viewport.x-this.params.clickcircle/4)+'px').css('top',(ctx.viewport.y-this.params.clickcircle/4)+'px');
+        $(tutoid+'cursor').css('left',ctx.viewport.x+'px').css('top',ctx.viewport.y+'px');
+        //newSequence.moveCursor({'x':ctx.image.x,'y':ctx.image.y,'speed':0});
         newSequence.changeImage({'image':ctx.image.name, 'speed':0});
         newSequence.zoomWindow({'x':ctx.zoom.x,'y':ctx.zoom.y,'w':ctx.zoom.w,'h':ctx.zoom.h,'speed':0});
         newSequence.maskWindow({'x':ctx.mask.x,'y':ctx.mask.y,'w':ctx.mask.w,'h':ctx.mask.h,'speed':0});
-        newSequence.moveCursor({'x':ctx.mouse.x,'y':ctx.mouse.y,'speed':0});
         
         $.Velocity.RunSequence(newSequence.items);
     }
+    
+    Tutorial.prototype.next = function() {
+      if (this.sequence.current.step<this.params.steps.length-1) {
+          this.sequence.current.step++;
+          this.initFromContext(this.params.steps[this.sequence.current.step].context);
+      }
+    }
+    Tutorial.prototype.start = function() {
+      this.sequence.current.step = 0;
+      this.initFromContext(this.params.steps[this.sequence.current.step].context);
+    }
 
+    Tutorial.prototype.previous = function() {
+      if (this.sequence.current.step>0) {
+          this.sequence.current.step--;
+          this.initFromContext(this.params.steps[this.sequence.current.step].context);
+      }
+    }
+    
     Tutorial.prototype.play = function () {
-       console.log(this.sequence.current.step);
-       ctx = this.params.steps[this.sequence.current.step].context
-       this.initFromContext(ctx);
-       if (this.sequence.current.play == true) {
-          this.sequence.current.play = false;
+       step = this.sequence.current.step;
+       console.log("play step",step);
+       ctx = this.params.steps[step].context;
+       if (this.sequence.play == true) {
+          this.sequence.play = false;
+          this.initFromContext(ctx);
           return
+       } else {
+          this.initFromContext(ctx);
        }
-       this.sequence.current.play = true;
-       seq = []
        
+       
+       this.sequence.play = true;
+       seq = []
+       this.sequence.current.image = ctx.image;
+       this.sequence.current.zoom = ctx.zoom;
+       this.sequence.current.mask = ctx.mask;
+       this.sequence.current.mouse = ctx.mouse;
+      
        start = ctx['i'];
        //var end = mySteps[currentStep+1]['i'];
        var end = this.sequence.items.length;
@@ -79,26 +99,34 @@ window.tutorial = (function () {
         return function() { initViewport(tutorial);}
     }
     function initViewport(tutorial) {
-        console.log(tutorial);
         current = tutorial.sequence.current;
 
-        current.image.w = document.getElementById(tutorial.params.name+'-image').naturalWidth;
-        current.image.h = document.getElementById(tutorial.params.name+'-image').naturalHeight;
-        current.image.tx = 0;
-        current.image.ty = 0;
-        current.image.x = 300;
-        current.image.y = 200;
         viewport_elt = document.getElementById(tutorial.params.name+'-viewport');
         if (viewport_elt.clientWidth != current.viewport.w) {
+            current.image.w = document.getElementById(tutorial.params.name+'-image').naturalWidth;
+            current.image.h = document.getElementById(tutorial.params.name+'-image').naturalHeight;
+            console.log("AAAAAAAAAAAAAAAAAAAAAAh",tutorial);
+            current.image.tx = 0;
+            current.image.ty = 0;
+            current.image.x = 300;
+            current.image.y = 200;
+            current.mouse.x = 300;
+            current.mouse.y = 200;
+            
+            current.image.zoom = 1;
+
             current.viewport.w = viewport_elt.clientWidth;
             current.viewport.h = viewport_elt.clientHeight;
-            console.log('init',current.viewport);
+            current.viewport.x0 = 0;
+            current.viewport.y0 = 0;
+            tutorial.sequence.updateCursor(300,200);
+
+            console.log('init',current.viewport.x,current.viewport.y);
             $('#'+tutorial.params.name+'-mask').attr('width',current.viewport.w).attr('height',current.viewport.h);
             $('#'+tutorial.params.name+'-leftmask').attr('x',0).attr('y',0).attr('width',0).attr('height',current.viewport.h);
             $('#'+tutorial.params.name+'-rightmask').attr('x',current.viewport.w).attr('y',0).attr('width',0).attr('height',current.viewport.h);
             $('#'+tutorial.params.name+'-topmask').attr('x',0).attr('y',0).attr('width',current.viewport.w).attr('height',0);
             $('#'+tutorial.params.name+'-bottommask').attr('x',0).attr('y',current.viewport.h).attr('width',current.viewport.w).attr('height',0);
-            current.image.zoom = 1;
             current.zoom.x = 0;
             current.zoom.y = 0;
             current.zoom.w = current.image.w;
@@ -107,8 +135,6 @@ window.tutorial = (function () {
             current.mask.y = 0;
             current.mask.w = current.image.w;
             current.mask.h = current.image.h;
-            current.mouse.x = 300;
-            current.mouse.y = 200;
         }
         $('#'+tutorial.params.name+'-viewport').css('height',current.viewport.h);
         console.log('viewport_w='+current.viewport.w+', viewport_h='+current.viewport.h);
@@ -145,10 +171,12 @@ window.tutorial = (function () {
            this.items = [];
            var currentStep = 0;
            for (i=0;i<scenario.length;i++) {
+               console.log(i,this.current.viewport);
                s = scenario[i];
-               this.setCurrentStep(i);
                s['context'] = JSON.parse(JSON.stringify(this.current));
+               
                s['context']['i'] = this.items.length;
+               this.setCurrentStep(i);
                if (s.action === 'stop') {
                    if (s.title == undefined) {
                        s.title = "Step "+(this.steps.length+1);
@@ -166,7 +194,10 @@ window.tutorial = (function () {
                }
                if (s.action === 'click') {
                    this.moveCursor(s);
-                   if (s.image) this.changeImage(s);
+                   if (s.image) {
+                       current.image.name = s.image;
+                       this.changeImage(s);
+                   }
                    this.startClick(s,true);
                }
                if (s.action === 'zoom') {
@@ -198,11 +229,11 @@ window.tutorial = (function () {
        };
        
        function setCurrentStep_callback(currentobj,value) {
-           console.log('setCurrentStep_callback',currentobj,value);
+           //console.log('setCurrentStep_callback',currentobj,value);
            return function () { currentobj.step = value };
        }
        Sequence.prototype.setCurrentStep = function (value) {
-          console.log('value='+value);
+          //console.log('value='+value);
           this.items.push({ e: $('#'+this.params.name+'-step'), p:{opacity:1}, options:{ duration:0, complete: 
              setCurrentStep_callback(this.current,value)}});
        };
@@ -400,7 +431,7 @@ window.tutorial = (function () {
                this.updateCursor(s.x,s.y);
                
                this.items.push({ e: $('#'+this.params.name+'-cursor'), p: {left:(this.current.viewport.x)+'px',top:(this.current.viewport.y)+'px'}, options: { delay:0, duration: speed, easing:'easeOutQuart'} });
-               this.items.push({e: $('#'+this.params.name+'-click'), p:{left:(this.current.viewport.x-this.params.clickcircle/4)+'px',top:(this.current.viewport.y-this.params.clickcircle/4)+'px',width:(this.params.clickcircle/2)+'px',height:(this.params.clickcircle/2)+'px'}, options: { delay:0, duration:0, sequenceQueue: true }});
+               this.items.push({e: $('#'+this.params.name+'-click'), p:{left:(this.current.viewport.x-this.params.clickcircle/4)+'px',top:(this.current.viewport.y-this.params.clickcircle/4)+'px',width:(this.params.clickcircle/2)+'px',height:(this.params.clickcircle/2)+'px'}, options: { delay:0, duration:speed, easing:'easeOutQuart', sequenceQueue: false }});
 
            }
        };
@@ -412,7 +443,7 @@ window.tutorial = (function () {
            } else if (s.button == 'Middle') {
             var color = 'red';
            }
-           console.log(color);
+           //console.log(color);
            return function () {
                $(click_id).css('border-color',color).css('visibility',visibility);
            }
