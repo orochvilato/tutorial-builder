@@ -3,6 +3,8 @@ window.tutorial = (function () {
     var globalparams = {
         'clickcircle': 50,
     }
+    var converter = new showdown.Converter();
+
     function Tutorial(params) {
         this.params = params;
         for(var key in globalparams) {
@@ -12,10 +14,38 @@ window.tutorial = (function () {
         this.image = params.image;
         this.sequence = new Sequence(params);
         globalparams[params.name] = this
-        
+
+        this.tutoid ='#'+this.params.name+'-';
+                
         image_elt = document.getElementById(this.params.name+'-image')
         image_elt.onload = ivp_callback(this);
         image_elt.src = this.image.name;
+        
+        $(this.tutoid+"play").click({'tuto':this}, function(event){
+            if (event.data.tuto.sequence.play == false) {
+                
+                $(event.data.tuto.tutoid+"play-icon").removeClass('fa-play').addClass('fa-pause');
+            } else {
+                $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
+            }
+           
+            event.data.tuto.play();
+        });   
+        $(this.tutoid+"start").click({'tuto':this}, function(event) {
+           $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
+            event.data.tuto.start();
+        });
+        $(this.tutoid+"next").click(function() {
+           $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
+            event.data.tuto.next();
+        });
+        $(this.tutoid+"previous").click(function() {
+           $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
+            event.data.tuto.previous();
+        });
+   
+   
+
     }
     
    
@@ -80,6 +110,7 @@ window.tutorial = (function () {
        
        
        this.sequence.play = true;
+       
        seq = []
        this.sequence.current.image = ctx.image;
        this.sequence.current.zoom = ctx.zoom;
@@ -158,7 +189,7 @@ window.tutorial = (function () {
                          'step': 0,
                          'mask':{'left':{},'right':{},'top':{},'bottom':{}}
                        };
-
+        this.play = false;
         if (params != undefined) {
             this.current.image = params.image;
             this.params.name = params.name;
@@ -478,8 +509,6 @@ window.tutorial = (function () {
                     }});
          this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpIn',options: { duration: speed }});
    }
-
-
 
 
 
