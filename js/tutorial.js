@@ -22,25 +22,15 @@ window.tutorial = (function () {
         image_elt.src = this.image.name;
         
         $(this.tutoid+"play").click({'tuto':this}, function(event){
-            if (event.data.tuto.sequence.play == false) {
-                
-                $(event.data.tuto.tutoid+"play-icon").removeClass('fa-play').addClass('fa-pause');
-            } else {
-                $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
-            }
-           
             event.data.tuto.play();
         });   
         $(this.tutoid+"start").click({'tuto':this}, function(event) {
-           $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
             event.data.tuto.start();
         });
         $(this.tutoid+"next").click({'tuto':this},function(event) {
-           $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
             event.data.tuto.next();
         });
         $(this.tutoid+"previous").click({'tuto':this},function(event) {
-           $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
             event.data.tuto.previous();
         });
    
@@ -48,11 +38,9 @@ window.tutorial = (function () {
 
     }
     
-    
-    Tutorial.prototype.initFromContext = function(ctx) {
-        console.log('initFromContext',ctx);
-        console.log('step',ctx.step);
+    Tutorial.prototype.stopAnimations = function() {
         tutoid = '#'+this.params.name+'-';
+
         $(tutoid+'leftmask').velocity('stop');
         $(tutoid+'rightmask').velocity('stop');
         $(tutoid+'topmask').velocity('stop');
@@ -63,9 +51,17 @@ window.tutorial = (function () {
         $(tutoid+'click').velocity('stop').css('visibility','hidden');
         $(tutoid+'info').velocity('stop').css('visibility','hidden');
         $(tutoid+'msg').velocity('stop').css('opacity',0);
- 
-        newSequence = new Sequence(this.params);
         this.sequence.play = false;
+        $(tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
+
+    }
+    
+    Tutorial.prototype.initFromContext = function(ctx) {
+        console.log('initFromContext',ctx);
+        console.log('step',ctx.step);
+        tutoid = '#'+this.params.name+'-';
+        this.stopAnimations(); 
+        newSequence = new Sequence(this.params);
         newSequence.current = JSON.parse(JSON.stringify(ctx));
       
         $(tutoid+'click').css('left',(ctx.viewport.x-this.params.clickcircle/4)+'px').css('top',(ctx.viewport.y-this.params.clickcircle/4)+'px');
@@ -115,6 +111,7 @@ window.tutorial = (function () {
           this.initFromContext(ctx);
        }
        
+       $(tutoid+"play-icon").removeClass('fa-play').addClass('fa-pause');
        
        this.sequence.play = true;
        
@@ -460,7 +457,7 @@ window.tutorial = (function () {
                                         complete: showMessage_callback('#'+this.params.name+'-msg',content,m.cssclass)
                                       }
                            });
-           this.items.push({ e: $('#'+this.params.name+'-msg'), p: transitionin });
+           this.items.push({ e: $('#'+this.params.name+'-msg'), p: transitionin, });
            this.items.push({ e: $('#'+this.params.name+'-msg'), p: transitionout, options: { delay:duration} });
            
        
