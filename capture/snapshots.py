@@ -195,12 +195,13 @@ class Snapshot():
         prevstep = []
         scenario = dict(name=self.params.title,steps=[])
         currentzoom = []
+        anchorid = 0
         for i,tlelt in enumerate(sorttl):
             if (tlelt['event'].type!='timed'):
                 t = tlelt['timestamp']-self.starttime
                 if 'Press' in tlelt['event'].type:
-                    steps.append(dict(action="step",image=""))
-                        
+                    steps.append(dict(action="loadImage",image="",anchor=dict(id="a%d" % anchorid,title="Step %d" % anchorid) ))
+                    anchorid += 1
                     if compare(self.lastevt,self.last):
                         if not self.lastevt['iname'] in self.imagesnames.keys():
                             save(self.lastevt)
@@ -248,8 +249,11 @@ class Snapshot():
 
         if compare(self.last,self.lastevt):
             save(self.lastevt)
-        steps.append(dict(action='step',image=self.imagesnames[self.lastevt['iname']]))
-
+        steps.append(dict(action='loadImage',
+                          image=self.imagesnames[self.lastevt['iname']],
+                          anchor=dict(id="a%d" % anchorid,title="Step %d" % anchorid),
+                          message=dict(type="markdown",content="# End of tuto")))
+        steps[0]['message'] = dict(type='markdown',content="# Start of tuto")
         scenario['steps'] = steps
         scenario['image'] = dict(name=steps[0]['image'])
         import json
@@ -263,4 +267,4 @@ class Snapshot():
         diff = ImageChops.difference(image1,image2).histogram()
         diff = 100-float(100*diff.count(0))/len(diff)
         
-        return diff                
+        return diff

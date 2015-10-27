@@ -62,7 +62,7 @@ window.tutorial = (function () {
         $(tutoid+'step').velocity('stop');
         $(tutoid+'click').velocity('stop').css('visibility','hidden');
         $(tutoid+'info').velocity('stop').css('visibility','hidden');
-        $(tutoid+'msg').velocity('stop').css('visibility','hidden');
+        $(tutoid+'msg').velocity('stop').css('opacity',0);
  
         newSequence = new Sequence(this.params);
         this.sequence.play = false;
@@ -229,22 +229,15 @@ window.tutorial = (function () {
                    a_elt.addEventListener("click", jump_callback(this.tutorial,this.anchors.length), false); 
                    document.getElementById(this.params.name+"-anchors-ul").appendChild(li_elt);
                    this.anchors.push({'step':i});
+                   this.addTitle(s.anchor);
+
                }
+               if (s.message != undefined) { this.showMessage(s.message);}
                s.context.anchor = this.anchors.length - 1;
                
                this.setCurrentStep(i);
-               if (s.action === 'stop') {
-                   if (s.title == undefined) {
-                       s.title = "Step "+(this.steps.length+1);
-                   }
-                   currentStep++;
-                   this.setCurrentStep(currentStep);
-                   myStep = {'i':this.items.length, 'image':s.image,'title':s.title};
-                   this.addStepTitle(s);
-                   if (s.message != undefined) { this.showMessage(s.message);}
-               }
 
-               if (s.action === 'loadImage' || s.action === 'step') {
+               if (s.action === 'loadImage') {
                    current.image.name = s.image;
                    this.changeImage(s);
                }
@@ -265,13 +258,6 @@ window.tutorial = (function () {
                if (s.action === 'wait') {
                    delay = s.time;
                }
-               if (s.action === 'stop') {
-                   myStep['zoom']={'x':this.current.zoom.x,'y':this.current.zoom.y, 'w':this.current.zoom.w,'h':this.current.zoom.h};
-                   myStep['mask']={'x':this.current.mask.x, 'y':this.current.mask.y, 'w':this.current.mask.w, 'h':this.current.mask.h};
-                   myStep['mouse'] = {'x':this.current.mouse.x,'y':this.current.mouse.y};
-                   this.steps.push(myStep);
-               }
-               if (s.wait) delay = s.wait;
            }
            this.maskWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h});
            this.zoomWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h});
@@ -459,6 +445,7 @@ window.tutorial = (function () {
        {
            return function () { 
                if (cssclass != undefined) $(msg_id).addClass(cssclass);
+               console.log("AAA",content);
                $(msg_id).html(content);
            }
        }
@@ -467,7 +454,7 @@ window.tutorial = (function () {
            content = ((m.type == 'markdown') ? converter.makeHtml(m.content) : m.content)
            transitionin = ((m.transitionin == undefined) ? "transition.bounceUpIn" : m.transitionin)
            transitionout = ((m.transitionout == undefined) ? "transition.bounceDownOut" : m.transitionout)
-           
+           console.log('message',m);
            this.items.push({ e: $('#'+this.params.name+'-msg'), p: { opacity:0 }, 
                              options: { duration: 0, 
                                         complete: showMessage_callback('#'+this.params.name+'-msg',content,m.cssclass)
@@ -524,16 +511,17 @@ window.tutorial = (function () {
            this.items.push({ e: $('#'+this.params.name+'-click'), p: {left:(this.current.viewport.x-2)+'px',top:(this.current.viewport.y-2)+'px',width:'4px',height:'4px'}, options: { duration: speed, complete: function () { $('#'+this.params.name+'-click').css('visibility','hidden');}}});
        };
      
-     function addStepTitle_callback(step_id,s) {
+     function addTitle_callback(step_id,s) {
+        console.log(s.title);
         return function () { $(step_id).html(s.title);}
      }  
-     Sequence.prototype.addStepTitle =  function (s,speed) {
-         speed = ((s.speed == undefined) ? 400 : s.speed);
-         console.log('#'+this.params.name+'-step');
-         this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpOut', options:{ sequenceQueue:false, duration:500, complete: addStepTitle_callback('#'+this.params.name+'-step',s)
+     Sequence.prototype.addTitle =  function (s) {
+         speed = ((s.speed == undefined) ? 400 : s.speed);         
+         console.log('#'+this.params.name+'-step',s);
+         this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpOut', options:{ sequenceQueue:false, duration:500, complete: addTitle_callback('#'+this.params.name+'-step',s)
                     }});
          this.items.push({ e: $('#'+this.params.name+'-step'), p: 'transition.slideUpIn',options: { duration: speed }});
-   }
+     }
 
 
 
