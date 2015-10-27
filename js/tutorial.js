@@ -63,7 +63,7 @@ window.tutorial = (function () {
         this.stopAnimations(); 
         newSequence = new Sequence(this.params);
         newSequence.current = JSON.parse(JSON.stringify(ctx));
-      
+        $(tutoid+'step').html(this.sequence.anchors[ctx.anchor].title);
         $(tutoid+'click').css('left',(ctx.viewport.x-this.params.clickcircle/4)+'px').css('top',(ctx.viewport.y-this.params.clickcircle/4)+'px');
         $(tutoid+'cursor').css('left',ctx.viewport.x+'px').css('top',ctx.viewport.y+'px');
         //newSequence.moveCursor({'x':ctx.image.x,'y':ctx.image.y,'speed':0});
@@ -89,7 +89,11 @@ window.tutorial = (function () {
     Tutorial.prototype.previous = function() {
       anchor_i = this.params.steps[this.sequence.current.step].context.anchor;
       if (anchor_i>0) {
-          this.sequence.current.step = this.sequence.anchors[anchor_i].step;
+          if (this.sequence.current.step > this.sequence.anchors[anchor_i].step) {
+              this.sequence.current.step = this.sequence.anchors[anchor_i].step;
+          } else {
+              this.sequence.current.step = this.sequence.anchors[anchor_i-1].step;
+          }
           this.initFromContext(this.params.steps[this.sequence.current.step].context);
       }
     }
@@ -175,9 +179,8 @@ window.tutorial = (function () {
         console.log('viewport_w='+current.viewport.w+', viewport_h='+current.viewport.h);
         if (tutorial.sequence.items.length == 0) {
             tutorial.sequence.init(tutorial.params.steps);
-            
+            $('#'+tutorial.params.name+'-step').html(tutorial.sequence.anchors[tutorial.params.steps[0].context.anchor].title);
         }
-
 
     }
     function Sequence(params) {
@@ -213,7 +216,6 @@ window.tutorial = (function () {
                s = scenario[i];
                s.context = JSON.parse(JSON.stringify(this.current));
                
-               s.context.i = this.items.length;
                if (s.anchor != undefined) {
                    var li_elt = document.createElement('li');
                    var a_elt = document.createElement('a');
@@ -225,11 +227,11 @@ window.tutorial = (function () {
                    li_elt.appendChild(a_elt);
                    a_elt.addEventListener("click", jump_callback(this.tutorial,this.anchors.length), false); 
                    document.getElementById(this.params.name+"-anchors-ul").appendChild(li_elt);
-                   this.anchors.push({'step':i});
                    this.addTitle(s.anchor);
-
+                   s.anchor.step = i;
+                   this.anchors.push(s.anchor);
                }
-               if (s.message != undefined) { this.showMessage(s.message);}
+               s.context.i = this.items.length;
                s.context.anchor = this.anchors.length - 1;
                
                this.setCurrentStep(i);
@@ -255,18 +257,26 @@ window.tutorial = (function () {
                if (s.action === 'wait') {
                    delay = s.time;
                }
+               
+               if (s.message != undefined) { this.showMessage(s.message);}
+
            }
-           this.maskWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h});
-           this.zoomWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h});
+//           this.maskWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h});
+
+           this.showMessage({"content": "# End of tuto","type": "markdown"});
+           this.items.push({ e: $('#'+this.params.name+'-play-icon'), p:{opacity:1}, options: { duration:0, complete: endplay_callback(this) }});
+
+           //this.zoomWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h,'mask':true},false);
            this.changeText({'content':'Fin du tutorial !','type':'markdown'});
-       
-           //this.steps[currentStep-1]['zoom']={'x':0,'y':0, 'w':this.current.image.w,'h':this.current.image.h};
-           //this.steps[currentStep-1]['mask']={'x':0, 'y':0, 'w':this.current.image.w, 'h':this.current.image.h};
-           // Ajouter une derniere etape ???
            console.log(scenario);
            this.scenario = scenario;
        };
-       
+       function endplay_callback(seq) {
+           return function() { 
+               this.removeClass('fa-pause').addClass('fa-play');
+               seq.play = false;
+           }
+       }         
        function setCurrentStep_callback(currentobj,value) {
            //console.log('setCurrentStep_callback',currentobj,value);
            return function () { currentobj.step = value };
@@ -313,11 +323,13 @@ window.tutorial = (function () {
        Sequence.prototype.maskWindow = function (s,queue) {
            speed = ((s.speed == undefined) ? 900 : s.speed);
            queue = ((queue == undefined) ? true : queue);
+           s.w = ((s.w == -1) ? this.current.image.w : s.w);
+           s.h = ((s.h == -1) ? this.current.image.h : s.h);
            this.updateMask(s.x,s.y,s.w,s.h);
            this.current.mask.x = s.x;
            this.current.mask.y = s.y;
-           this.current.mask.w = s.w;
-           this.current.mask.h = s.h;
+           this.current.mask.w = ((s.w == -1) ? this.current.image.w : s.w);
+           this.current.mask.h = ((s.h == -1) ? this.current.image.h : s.h);
            this.items.push({ e: $('#'+this.params.name+'-leftmask'), p: {width: this.current.mask.left.w}, options: { sequenceQueue: queue, delay:0, duration: speed,  easing:'easeInSine' } });
            this.items.push({ e: $('#'+this.params.name+'-rightmask'), p: {width: this.current.mask.right.w,x:this.current.mask.right.x}, options: { delay:0, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
            this.items.push({ e: $('#'+this.params.name+'-topmask'), p: {height: this.current.mask.top.h}, options: { delay:0, duration: speed, sequenceQueue: false, easing:'easeInSine' } });
@@ -381,6 +393,9 @@ window.tutorial = (function () {
          last_tx = this.current.image.tx;
          last_ty = this.current.image.ty;
          last_zoom = this.current.image.zoom;
+         s.w = ((s.w == -1) ? this.current.image.w : s.w);
+         s.h = ((s.h == -1) ? this.current.image.h : s.h);
+
          this.updateZoom(s.x,s.y,s.w,s.h);
          this.current.zoom.x = s.x;
          this.current.zoom.y = s.y;

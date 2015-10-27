@@ -249,10 +249,18 @@ class Snapshot():
 
         if compare(self.last,self.lastevt):
             save(self.lastevt)
+        steps.append({
+            "action": "zoom",
+            "h": -1,
+            "mask": True,
+            "w": -1,
+            "x": 0,
+            "y": 0
+        })
         steps.append(dict(action='loadImage',
-                          image=self.imagesnames[self.lastevt['iname']],
-                          anchor=dict(id="a%d" % anchorid,title="Step %d" % anchorid),
-                          message=dict(type="markdown",content="# End of tuto")))
+                          image=self.imagesnames[self.lastevt['iname']]))
+#                          anchor=dict(id="a%d" % anchorid,title="Step %d" % anchorid),
+#                          message=dict(type="markdown",content="# End of tuto")))
         steps[0]['message'] = dict(type='markdown',content="# Start of tuto")
         scenario['steps'] = steps
         scenario['image'] = dict(name=steps[0]['image'])
