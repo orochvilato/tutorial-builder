@@ -35,11 +35,11 @@ window.tutorial = (function () {
            $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
             event.data.tuto.start();
         });
-        $(this.tutoid+"next").click(function() {
+        $(this.tutoid+"next").click({'tuto':this},function(event) {
            $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
             event.data.tuto.next();
         });
-        $(this.tutoid+"previous").click(function() {
+        $(this.tutoid+"previous").click({'tuto':this},function(event) {
            $(event.data.tuto.tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
             event.data.tuto.previous();
         });
