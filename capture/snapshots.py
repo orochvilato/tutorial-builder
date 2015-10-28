@@ -25,7 +25,9 @@ class Snapshot():
         self.lastEvent = None
         self.lock = False
         self.parameters = parameters
-        self.parameters.define(id='title',desc='Nom de la sequence',type='string',default='snap')
+        self.parameters.define(id='name',desc='Nom du tutorial',type='string',default='snap')
+        self.parameters.define(id='title',desc='Titre du tutorial',type='string',default='snap tutorial')
+        self.parameters.define(id="description", desc="Description du tutorial (markdown)",type="string", default="")
         self.parameters.define(id='autoDelay',desc='Delai entre les capture auto (en s)',type='float',default=0.5)
         self.parameters.define(id='toggleKey',desc='Touche debut/arrêt prise de snapshots', type='string', default='twosuperior')
         self.parameters.define(id='followActive',desc='Observer la fenêtre active uniquement', type='boolean', default=True)
@@ -193,21 +195,21 @@ class Snapshot():
                     )
         steps = []
         prevstep = []
-        scenario = dict(name=self.params.title,steps=[])
+        scenario = dict(name=self.params.name,title=self.params.title,desc=self.params.description,steps=[])
         currentzoom = []
         anchorid = 0
         for i,tlelt in enumerate(sorttl):
             if (tlelt['event'].type!='timed'):
                 t = tlelt['timestamp']-self.starttime
                 if 'Press' in tlelt['event'].type:
-                    steps.append(dict(action="loadImage",image="",anchor=dict(id="a%d" % anchorid,title="Step %d" % anchorid) ))
+                    steps.append(dict(action="anchor",id="a%d" % anchorid,title="Step %d" % anchorid,image=""))
+                    #steps.append(dict(action="loadImage",image=""))
                     anchorid += 1
                     if compare(self.lastevt,self.last):
                         if not self.lastevt['iname'] in self.imagesnames.keys():
                             save(self.lastevt)
                     steps[-1]['image'] = self.imagesnames[self.lastevt['iname']]
                     self.last = self.lastevt
-
                 if compare(tlelt,self.last):
                     if not tlelt['iname'] in self.imagesnames.keys():
                         save(tlelt)
@@ -261,6 +263,7 @@ class Snapshot():
                           image=self.imagesnames[self.lastevt['iname']]))
 #                          anchor=dict(id="a%d" % anchorid,title="Step %d" % anchorid),
 #                          message=dict(type="markdown",content="# End of tuto")))
+        steps.append(dict(action='zoom',x=0,y=0,w=-1,h=-1,mask=True,message=dict(type="markdown",content="# End of tuto")))
         steps[0]['message'] = dict(type='markdown',content="# Start of tuto")
         scenario['steps'] = steps
         scenario['image'] = dict(name=steps[0]['image'])

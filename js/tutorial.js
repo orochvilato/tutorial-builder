@@ -50,7 +50,7 @@ window.tutorial = (function () {
         $(tutoid+'step').velocity('stop');
         $(tutoid+'click').velocity('stop').css('visibility','hidden');
         $(tutoid+'info').velocity('stop').css('visibility','hidden');
-        $(tutoid+'msg').velocity('stop').css('opacity',0);
+        $(tutoid+'msg').velocity('stop').css('display','none');
         this.sequence.play = false;
         $(tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
 
@@ -61,11 +61,18 @@ window.tutorial = (function () {
         console.log('step',ctx.step);
         tutoid = '#'+this.params.name+'-';
         this.stopAnimations(); 
+        console.log("step",this.sequence.current.step);
+        curstep = this.params.steps[this.sequence.current.step];
         newSequence = new Sequence(this.params);
         newSequence.current = JSON.parse(JSON.stringify(ctx));
         $(tutoid+'step').html(this.sequence.anchors[ctx.anchor].title);
         $(tutoid+'click').css('left',(ctx.viewport.x-this.params.clickcircle/4)+'px').css('top',(ctx.viewport.y-this.params.clickcircle/4)+'px');
         $(tutoid+'cursor').css('left',ctx.viewport.x+'px').css('top',ctx.viewport.y+'px');
+        if (curstep.message != undefined) {
+            content = ((curstep.message.type == 'markdown') ? converter.makeHtml(curstep.message.content) : curstep.message.content)
+            $(tutoid+'msg').html(content).css('display','block').css('opacity',1);
+        }
+        
         //newSequence.moveCursor({'x':ctx.image.x,'y':ctx.image.y,'speed':0});
         newSequence.changeImage({'image':ctx.image.name, 'speed':0});
         newSequence.zoomWindow({'x':ctx.zoom.x,'y':ctx.zoom.y,'w':ctx.zoom.w,'h':ctx.zoom.h,'speed':0});
@@ -179,7 +186,8 @@ window.tutorial = (function () {
         console.log('viewport_w='+current.viewport.w+', viewport_h='+current.viewport.h);
         if (tutorial.sequence.items.length == 0) {
             tutorial.sequence.init(tutorial.params.steps);
-            $('#'+tutorial.params.name+'-step').html(tutorial.sequence.anchors[tutorial.params.steps[0].context.anchor].title);
+            console.log(tutorial.params.steps[0].context.anchor,tutorial.sequence.anchors);
+            //$('#'+tutorial.params.name+'-step').html(tutorial.sequence.anchors[tutorial.params.steps[0].context.anchor].title);
         }
 
     }
@@ -215,11 +223,12 @@ window.tutorial = (function () {
            for (i=0;i<scenario.length;i++) {
                s = scenario[i];
                s.context = JSON.parse(JSON.stringify(this.current));
+
                
-               if (s.anchor != undefined) {
+               if (s.action === 'anchor') {
                    var li_elt = document.createElement('li');
                    var a_elt = document.createElement('a');
-                   var a_txt = document.createTextNode(s.anchor.title);
+                   var a_txt = document.createTextNode(s.title);
                    a_elt.href = "#"
                    a_elt.id = this.params.name+"-anchors-a"+this.anchors.length;
                    a_elt.anchor = this.anchors.length;
@@ -227,10 +236,12 @@ window.tutorial = (function () {
                    li_elt.appendChild(a_elt);
                    a_elt.addEventListener("click", jump_callback(this.tutorial,this.anchors.length), false); 
                    document.getElementById(this.params.name+"-anchors-ul").appendChild(li_elt);
-                   this.addTitle(s.anchor);
-                   s.anchor.step = i;
-                   this.anchors.push(s.anchor);
+                   this.addTitle(s);
+                   this.changeImage(s);
+                   s.step = i;
+                   this.anchors.push(s);
                }
+               if (s.message != undefined) this.showMessage(s.message);
                s.context.i = this.items.length;
                s.context.anchor = this.anchors.length - 1;
                
@@ -258,15 +269,14 @@ window.tutorial = (function () {
                    delay = s.time;
                }
                
-               if (s.message != undefined) { this.showMessage(s.message);}
+               if (s.message != undefined) { this.hideMessage(s.message);}
 
            }
 //           this.maskWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h});
 
-           this.showMessage({"content": "# End of tuto","type": "markdown"});
+           
            this.items.push({ e: $('#'+this.params.name+'-play-icon'), p:{opacity:1}, options: { duration:0, complete: endplay_callback(this) }});
 
-           //this.zoomWindow({'x':0,'y':0,'w':this.current.image.w,'h':this.current.image.h,'mask':true},false);
            this.changeText({'content':'Fin du tutorial !','type':'markdown'});
            console.log(scenario);
            this.scenario = scenario;
@@ -409,7 +419,10 @@ window.tutorial = (function () {
              this.maskWindow(s,false);
          }
        };
-       
+
+       //------------------------------------------
+       // changeImage
+       //------------------------------------------
        
        function changeImage_callback(img_id,s) {
            return function() {
@@ -422,6 +435,11 @@ window.tutorial = (function () {
            this.items.push({ e: $('#'+this.params.name+'-image'), p: {opacity:1}, options: { delay:0, duration: speed, complete: changeImage_callback('#'+this.params.name+'-image',s) } });
        
        };
+       
+       //------------------------------------------
+       // changeText
+       //------------------------------------------
+
        function changeText_callback(info_id,s) {
            if (s.type === 'markdown') {
                var content = converter.makeHtml(s.content);
@@ -453,30 +471,42 @@ window.tutorial = (function () {
                            });
            this.items.push({ e: $('#'+this.params.name+'-info'), p: transition});
        };
-       function showMessage_callback(msg_id,content,cssclass)
+       
+       //------------------------------------------
+       // show/hide Message
+       //------------------------------------------
+
+       function showMessage_callback(msg_id,m)
        {
            return function () { 
-               if (cssclass != undefined) $(msg_id).addClass(cssclass);
-               console.log("AAA",content);
-               $(msg_id).html(content);
+               setMessage(msg_id,m);
            }
+       }
+       function setMessage(msg_id,m) {
+           content = ((m.type == 'markdown') ? converter.makeHtml(m.content) : m.content);
+           if (m.cssclass != undefined) $(msg_id).addClass(m.cssclass);
+           $(msg_id).html(content);
        }
        Sequence.prototype.showMessage = function (m) {
            duration = ((m.duration == undefined) ? 3000 : duration)
-           content = ((m.type == 'markdown') ? converter.makeHtml(m.content) : m.content)
            transitionin = ((m.transitionin == undefined) ? "transition.bounceUpIn" : m.transitionin)
-           transitionout = ((m.transitionout == undefined) ? "transition.bounceDownOut" : m.transitionout)
-           console.log('message',m);
+           console.log('SHOWMESSAGE');
            this.items.push({ e: $('#'+this.params.name+'-msg'), p: { opacity:0 }, 
                              options: { duration: 0, 
-                                        complete: showMessage_callback('#'+this.params.name+'-msg',content,m.cssclass)
+                                        complete: showMessage_callback('#'+this.params.name+'-msg',m)
                                       }
                            });
-           this.items.push({ e: $('#'+this.params.name+'-msg'), p: transitionin, });
-           this.items.push({ e: $('#'+this.params.name+'-msg'), p: transitionout, options: { delay:duration} });
-           
-       
+           this.items.push({ e: $('#'+this.params.name+'-msg'), p: transitionin });
        };         
+
+       Sequence.prototype.hideMessage = function (m) {
+           duration = ((m.duration == undefined) ? 3000 : duration)
+           transitionout = ((m.transitionout == undefined) ? "transition.bounceDownOut" : m.transitionout)
+           this.items.push({ e: $('#'+this.params.name+'-msg'), p: transitionout, options: { delay:duration} });
+       };         
+       
+       
+       
        
        Sequence.prototype.moveCursor = function (s) {
            speed = ((s.speed == undefined) ? 1000 : s.speed);

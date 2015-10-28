@@ -30,6 +30,12 @@
             "group": "default",
             "type": "integer"
         },
+        "description": {
+            "default": "",
+            "desc": "Description du tutorial (markdown)",
+            "group": "default",
+            "type": "string"
+        },
         "diffPct": {
             "default": 1,
             "desc": "Ecart tol\u00e9r\u00e9 entre les images (en %)",
@@ -41,6 +47,12 @@
             "desc": "Observer la fen\u00eatre active uniquement",
             "group": "default",
             "type": "boolean"
+        },
+        "name": {
+            "default": "snap",
+            "desc": "Nom du tutorial",
+            "group": "default",
+            "type": "string"
         },
         "title": {
             "default": "snap",
@@ -62,8 +74,10 @@
             "cropL": 0,
             "cropR": 0,
             "cropT": 0,
+            "description": "",
             "diffPct": 1,
             "followActive": true,
+            "name": "tuto",
             "title": "tuto",
             "toggleKey": "[65041]"
         }
