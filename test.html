@@ -5,7 +5,9 @@
 <link href="css/font-awesome.min.css" rel="stylesheet">
 
 <style>
-
+    .bg-default {
+        background-color: #EEE;
+    }
     .viewport {
         //float: left;
         position: relative;
@@ -17,15 +19,38 @@
     }
     .info {
         font-family: "Open Sans", sans-serif;
-        font-size: 110%;
+        font-size: 0.8vw;
         line-height: 1.35em;
-        color: #3a3a3a;
-        background-color: #eeeeee;
+        //color: #3a3a3a;
+        //background-color: #eeeeee;
         border-color: #888888;
         padding: 15px;
-        margin-bottom: 20px;
         border: 2px solid;
-        border-radius: 6px;
+        //border-radius: 6px;
+    }
+    .info-bottom {
+        position: absolute;
+        width:100%;
+        bottom:0px;
+    }
+    .info-top {
+        position: absolute;
+        width:100%;
+        top:0px;
+    }
+    .info-left {
+        position: absolute;
+        height:100%;
+        width:20%;
+        left:0px;
+        top:0px;
+    }
+    .info-right {
+        position: absolute;
+        height:100%;
+        width:20%;
+        right:0px;
+        top:0px;
     }
     .msgbox {
         position: absolute;
@@ -37,9 +62,9 @@
         align-items: center; 
         text-align: center;
     }
-    h1 {
-       font-size: 2vw;
-    }
+    //h1 {
+    //   font-size: 2vw;
+    //}
     .zone {
         left:40px;
         top:40px;
@@ -153,7 +178,8 @@ $(document).ready(function(){
             		<div id="tuto-click" class="click" class="anim"></div>
             		<img id="tuto-cursor" class="cursor"  class="anim" src="cursor.png"/>
                 </div>
-                <div id="tuto-msg" class="info msgbox" style="display:none;"><span style="width:100%;">test</span></div>
+                <div id="tuto-msg" class="info msgbox bg-default" style="display:none;"><span style="width:100%;">test</span></div>
+                <div class="info info-left" id="tuto-info" style="opacity:0;"></div>
 
             </div>
 
@@ -161,7 +187,6 @@ $(document).ready(function(){
     </div>
     </div>
 <div class="col-md-12">
-<div class="info" id="info" style="opacity:0;"></div>
  
 </div>
 

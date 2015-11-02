@@ -49,7 +49,7 @@ window.tutorial = (function () {
         $(tutoid+'cursor').velocity('stop');
         $(tutoid+'step').velocity('stop');
         $(tutoid+'click').velocity('stop').css('visibility','hidden');
-        $(tutoid+'info').velocity('stop').css('visibility','hidden');
+        $(tutoid+'info').velocity('stop').css('display','none');
         $(tutoid+'msg').velocity('stop').css('display','none');
         this.sequence.play = false;
         $(tutoid+"play-icon").removeClass('fa-pause').addClass('fa-play');
@@ -74,7 +74,8 @@ window.tutorial = (function () {
         }
         
         //newSequence.moveCursor({'x':ctx.image.x,'y':ctx.image.y,'speed':0});
-        newSequence.changeImage({'image':ctx.image.name, 'speed':0});
+        var image = ((curstep.image)?curstep.image:ctx.image.name)
+        newSequence.changeImage({'image':image, 'speed':0});
         newSequence.zoomWindow({'x':ctx.zoom.x,'y':ctx.zoom.y,'w':ctx.zoom.w,'h':ctx.zoom.h,'speed':0});
         newSequence.maskWindow({'x':ctx.mask.x,'y':ctx.mask.y,'w':ctx.mask.w,'h':ctx.mask.h,'speed':0});
         
@@ -262,7 +263,7 @@ window.tutorial = (function () {
                if (s.action === 'zoom') {
                    this.zoomWindow(s);
                }
-               if (s.action === 'text') {
+               if (s.action === 'hideInfo' || s.action === 'showInfo') {
                    this.changeText(s);
                }
                if (s.action === 'wait') {
@@ -276,14 +277,12 @@ window.tutorial = (function () {
 
            
            this.items.push({ e: $('#'+this.params.name+'-play-icon'), p:{opacity:1}, options: { duration:0, complete: endplay_callback(this) }});
-
-           this.changeText({'content':'Fin du tutorial !','type':'markdown'});
            console.log(scenario);
            this.scenario = scenario;
        };
        function endplay_callback(seq) {
            return function() { 
-               this.removeClass('fa-pause').addClass('fa-play');
+               $('#'+seq.params.name+'-play-icon').removeClass('fa-pause').addClass('fa-play');
                seq.play = false;
            }
        }         
@@ -446,30 +445,55 @@ window.tutorial = (function () {
            } else {
                var content = s.content;
            }
-           background = ((s.background == undefined) ? '' : s.background)
            return function () {
-               $(info_id).html(content).css('background-color',background);
+               console.log('changeText_callback call');
+               infoclass = "info";
+               if (s.orientation) {
+                   infoclass = infoclass + " info-"+s.orientation
+               }
+               if (s.background) {
+                   infoclass = infoclass + " bg-"+s.background;
+               } else {
+                   infoclass = infoclass + " bg-default";
+               }
+               if (s.textcolor) {
+                   infoclass = infoclass + " text-"+s.textcolor;
+               } else {
+                   infoclass = infoclass + " text-default";
+               }
+               $(info_id).attr('class',infoclass);
+               
+               $(info_id).html(content);
            }
        }
        Sequence.prototype.changeText = function (s) {
-           if (s.type === 'markdown') {
-               var content = converter.makeHtml(s.content);
+           transdir = {'top':'Down','bottom':'Up','left':'Left','right':'Right'};
+           if (s.orientation) {
+               var orientation = s.orientation;
            } else {
-               var content = s.content;
-           }
+               var orientation = "bottom";
+           }    
            if (s.transition) {
                var transition = s.transition;
            } else {
-               var transition = "transition.slideUpBigIn";
+               var transition = "transition.slide"+transdir[s.orientation]+"BigIn";
            }
-           
+           if (s.content) {
+               var complete = changeText_callback('#'+this.params.name+'-info',s)
+           } else {
+               var complete = undefined;
+           }           
            this.items.push({ e: $('#'+this.params.name+'-info'), p: { opacity:0 }, 
                              options: { duration: 750, 
                                         easing:'easeOutQuart', 
-                                        complete: changeText_callback('#'+this.params.name+'-info',s)
+                                        complete: complete
                                        }
                            });
-           this.items.push({ e: $('#'+this.params.name+'-info'), p: transition});
+           if (s.content) {
+               this.items.push({ e: $('#'+this.params.name+'-info'), p: transition});
+           }
+           
+            
        };
        
        //------------------------------------------
@@ -479,13 +503,23 @@ window.tutorial = (function () {
        function showMessage_callback(msg_id,m)
        {
            return function () { 
-               setMessage(msg_id,m);
+              var infoclass = "info msgbox"
+              console.log('show MESSAGE');
+              if (m.background) {
+                   infoclass = infoclass + " bg-"+m.background;
+               } else {
+                   infoclass = infoclass + " bg-default";
+               }
+               if (m.textcolor) {
+                   infoclass = infoclass + " text-"+m.textcolor;
+               } else {
+                   infoclass = infoclass + " text-default";
+               }
+               
+               content = ((m.type == 'markdown') ? converter.makeHtml(m.content) : m.content);
+               $(msg_id).attr('class',infoclass);
+               $(msg_id).html(content);
            }
-       }
-       function setMessage(msg_id,m) {
-           content = ((m.type == 'markdown') ? converter.makeHtml(m.content) : m.content);
-           if (m.cssclass != undefined) $(msg_id).addClass(m.cssclass);
-           $(msg_id).html(content);
        }
        Sequence.prototype.showMessage = function (m) {
            duration = ((m.duration == undefined) ? 3000 : duration)
