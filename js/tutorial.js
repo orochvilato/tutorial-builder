@@ -3,7 +3,7 @@ window.tutorial = (function () {
     var globalparams = {
         'clickcircle': 50,
     }
-    var converter = new showdown.Converter();
+    var converter = new showdown.Converter({ extensions: ['tubu']});
 
     function Tutorial(params) {
         this.params = params;
