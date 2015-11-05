@@ -464,6 +464,13 @@ window.tutorial = (function () {
                $(info_id).attr('class',infoclass);
                
                $(info_id).html(content);
+               $(info_id).blast({ delimiter: "word" })
+                         .velocity("transition.fadeIn", { 
+                                    display: null,
+                                    duration: 1250,
+                                    stagger: 40,
+                                    delay: 1000
+                                  });
            }
        }
        Sequence.prototype.changeText = function (s) {
@@ -519,6 +526,14 @@ window.tutorial = (function () {
                content = ((m.type == 'markdown') ? converter.makeHtml(m.content) : m.content);
                $(msg_id).attr('class',infoclass);
                $(msg_id).html(content);
+               $(msg_id).blast({ delimiter: "word" })
+                         .velocity("transition.fadeIn", { 
+                                    display: null,
+                                    duration: 1250,
+                                    stagger: 40,
+                                    delay: 400
+                                  });
+               
            }
        }
        Sequence.prototype.showMessage = function (m) {
