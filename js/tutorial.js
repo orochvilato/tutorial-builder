@@ -16,10 +16,7 @@ window.tutorial = (function () {
         this.sequence = new Sequence(params);
 
         this.tutoid ='#'+this.params.name+'-';
-                
-        image_elt = document.getElementById(this.params.name+'-image')
-        image_elt.onload = ivp_callback(this);
-        image_elt.src = this.image.name;
+        this.initImg();
         
         $(this.tutoid+"play").click({'tuto':this}, function(event){
             event.data.tuto.play();
@@ -37,7 +34,15 @@ window.tutorial = (function () {
    
 
     }
-    
+    Tutorial.prototype.initImg = function() {
+        image_elt = document.getElementById(this.params.name+'-image')
+        image_elt.onload = ivp_callback(this);
+        image_elt.src = this.image.name;
+        message_elt = document.getElementById(this.params.name+'-msg');
+        $(message_elt).css('display','block');
+        showMessage_callback(message_elt,this.params.description)();
+        $('#'+this.params.name+'-step').html('');
+    }
     Tutorial.prototype.stopAnimations = function() {
         tutoid = '#'+this.params.name+'-';
 
@@ -92,6 +97,8 @@ window.tutorial = (function () {
     Tutorial.prototype.start = function() {
       this.sequence.current.step = 0;
       this.initFromContext(this.params.steps[this.sequence.current.step].context);
+      this.initImg();
+      
     }
 
     Tutorial.prototype.previous = function() {
@@ -152,7 +159,6 @@ window.tutorial = (function () {
         if (viewport_elt.clientWidth != current.viewport.w) {
             current.image.w = document.getElementById(tutorial.params.name+'-image').naturalWidth;
             current.image.h = document.getElementById(tutorial.params.name+'-image').naturalHeight;
-            console.log("AAAAAAAAAAAAAAAAAAAAAAh",tutorial);
             current.image.tx = 0;
             current.image.ty = 0;
             current.image.x = 300;
@@ -168,7 +174,6 @@ window.tutorial = (function () {
             current.viewport.y0 = 0;
             tutorial.sequence.updateCursor(300,200);
 
-            console.log('init',current.viewport.x,current.viewport.y);
             $('#'+tutorial.params.name+'-mask').attr('width',current.viewport.w).attr('height',current.viewport.h);
             $('#'+tutorial.params.name+'-leftmask').attr('x',0).attr('y',0).attr('width',0).attr('height',current.viewport.h);
             $('#'+tutorial.params.name+'-rightmask').attr('x',current.viewport.w).attr('y',0).attr('width',0).attr('height',current.viewport.h);
@@ -221,10 +226,11 @@ window.tutorial = (function () {
     Sequence.prototype.init = function (scenario) {
            this.items = [];
            var currentStep = 0;
+           this.hideMessage({'content':''});
            for (i=0;i<scenario.length;i++) {
                s = scenario[i];
                s.context = JSON.parse(JSON.stringify(this.current));
-
+               
                
                if (s.action === 'anchor') {
                    var li_elt = document.createElement('li');

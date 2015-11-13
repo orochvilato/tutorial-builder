@@ -1,5 +1,8 @@
 var sce={
-    "desc": "Comment blah blah",
+    "description": {
+                "content": "# New tuto",
+                "type": "markdown"
+            },
     "image": {
         "name": "snap/tuto/tuto-001.png"
     },
@@ -54,7 +57,7 @@ var sce={
             "orientation": "top",
             "background":"info",
             "type":"markdown",
-            "content":"##Test\nVoila\n\nVolia"
+            "content":"##Test\n\nShowdown is a Javascript Markdown to HTML converter, based on the original works by John Gruber. Showdown can be used client side (in the browser) or server side (with NodeJs)."
         },  
         {
             "action": "click",
@@ -73,6 +76,9 @@ var sce={
             "id": "a2",
             "image": "snap/tuto/tuto-004.png",
             "title": "Step 2"
+        },
+        {
+            "action": "hideInfo"
         },
         {
             "action": "zoom",
